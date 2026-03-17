@@ -713,6 +713,7 @@ let peons = []; // NEW — peon staff list
 let duties = []; // teacher duties
 let peonDuties = []; // NEW — peon duties (separate sheet)
 let users = [];       // users for login
+var _usersReady = false; // true once fetch has completed (success or fail)
 
 let deletedTeachersBackup = [];
 let deletedPeonsBackup = [];
@@ -773,6 +774,8 @@ function applyRawResults(results) {
     };
   });
   users = results[5] || []; // ✅ store users
+  _usersReady = true;
+  _onUsersReady(); // unlock login button
 }
 
 /* ============================================================
@@ -842,6 +845,9 @@ async function loadAll(silent) {
     setSyncStatus("ok");
     if (!silent) showToast("Data loaded ✓");
   } catch (err) {
+    // Always unlock login button even if fetch fails
+    _usersReady = true;
+    _onUsersReady();
     if (cached) {
       setSyncStatus("cached");
       if (!silent) showToast("Using cached data (offline)", "#f59e0b");
