@@ -118,9 +118,7 @@
     autocomplete="current-password">
 
   <!-- No inline onclick — event listeners attached in JS below -->
-  <button id="loginBtn" disabled style="opacity:0.6;cursor:not-allowed;">
-    Loading…
-  </button>
+  <button id="loginBtn">Login</button>
 
   <div id="loginStatus" style="font-size:12px;color:#64748b;min-height:16px;text-align:center;"></div>
   <div id="loginError" style="color:#dc2626;font-size:13px;display:none;text-align:center;max-width:280px;"></div>
@@ -3967,28 +3965,14 @@ window.onload = function () {
   _loginError  = document.getElementById("loginError");
   _loginStatus = document.getElementById("loginStatus");
 
-  // ── Set initial loading state on button ─────────────────────
-  if (_loginBtn) {
-    _loginBtn.disabled      = true;
-    _loginBtn.innerText     = "Loading…";
-    _loginBtn.style.opacity = "0.6";
-    _loginBtn.style.cursor  = "not-allowed";
-  }
-  if (_loginStatus) {
-    _loginStatus.textContent = "Loading user accounts…";
-  }
-
   // ── Attach login button events ───────────────────────────────
-  // We use BOTH click and touchstart to cover:
-  // - Desktop: click fires normally
-  // - Mobile: touchstart bypasses the 300ms tap delay on Android
   if (_loginBtn) {
     _loginBtn.addEventListener("click", function (e) {
       e.preventDefault();
       doLogin();
     });
     _loginBtn.addEventListener("touchend", function (e) {
-      e.preventDefault(); // prevents ghost click 300ms later
+      e.preventDefault();
       doLogin();
     }, { passive: false });
   }
@@ -3998,7 +3982,7 @@ window.onload = function () {
     _loginMail.addEventListener("keydown", function (e) {
       if (e.key === "Enter") {
         e.preventDefault();
-        if (_loginPass) _loginPass.focus(); // move to password field
+        if (_loginPass) _loginPass.focus();
       }
     });
   }
@@ -4014,7 +3998,7 @@ window.onload = function () {
   // ── Restore saved session (if any) ──────────────────────────
   checkLogin();
 
-  // ── Start fetching data (users[] loads inside here) ──────────
+  // ── Start fetching data ──────────────────────────────────────
   loadAll(false);
   startPolling();
 };
