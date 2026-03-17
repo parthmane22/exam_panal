@@ -285,6 +285,9 @@ async function loadAll(silent) {
     setSyncStatus("ok");
     if (!silent) showToast("Data loaded ✓");
   } catch (err) {
+    // Even on error, unlock the login button so user isn't stuck
+    _usersReady = true;
+    _onUsersReady();
     if (cached) {
       setSyncStatus("cached");
       if (!silent) showToast("Using cached data (offline)", "#f59e0b");
