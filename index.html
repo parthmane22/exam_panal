@@ -1,0 +1,4024 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<title>Exam Supervisor Panel</title>
+<link rel="icon" type="image/png" href="logo.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── DUTY TOGGLE BAR ── */
+.toggle-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px; background:#f8fafc;
+  border-bottom:1px solid #e2e8f0; gap:12px; flex-wrap:wrap;
+  border-radius:10px 10px 0 0;
+}
+.toggle-tabs {
+  display:flex; align-items:center; gap:4px;
+  background:#e2e8f0; border-radius:100px; padding:4px;
+}
+.tab-btn {
+  display:flex; align-items:center; gap:7px;
+  padding:7px 18px; border-radius:100px; border:none;
+  font-size:13px; font-weight:700; cursor:pointer;
+  transition:all 0.25s ease; color:#64748b; background:transparent;
+  white-space:nowrap;
+}
+.tab-btn i { font-size:13px; }
+.tab-btn.active-teacher { background:white; color:#1e293b; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+.tab-btn.active-peon    { background:#40babd; color:white; box-shadow:0 2px 8px rgba(64,186,189,0.35); }
+.toggle-right { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:600; }
+.lbl-off { color:#64748b; transition:color .2s; }
+.lbl-on  { color:#2d9fa2; transition:color .2s; }
+.toggle-switch { position:relative; width:52px; height:28px; flex-shrink:0; }
+.toggle-switch input { display:none; }
+.toggle-track { width:100%; height:100%; background:#cbd5e1; border-radius:100px; transition:background .3s; cursor:pointer; display:block; }
+.toggle-thumb { position:absolute; top:3px; left:3px; width:22px; height:22px; background:white; border-radius:50%; transition:transform .3s; box-shadow:0 2px 6px rgba(0,0,0,0.2); pointer-events:none; }
+.toggle-switch input:checked ~ .toggle-track { background:#40babd; }
+.toggle-switch input:checked ~ .toggle-thumb { transform:translateX(24px); }
+
+/* ── DUTY PANELS ── */
+.duty-panel { padding:20px; }
+.duty-panel.hidden { display:none; }
+.panel-header { display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid #e2e8f0; }
+.panel-icon { width:38px; height:38px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.icon-teacher { background:#eff6ff; color:#2563eb; }
+.icon-peon    { background:#e6f7f7; color:#2d9fa2; }
+.panel-title  { font-size:15px; font-weight:700; }
+.panel-sub    { font-size:12px; color:#64748b; margin-top:2px; }
+.badge-blue { background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; margin-left:auto; }
+.badge-teal { background:#e6f7f7; color:#2d9fa2; border:1px solid #40babd; font-size:11px; font-weight:700; padding:3px 10px; border-radius:100px; margin-left:auto; }
+
+/* ── PEON COUNT DISPLAY ── */
+.peon-count-display {
+  display:flex; align-items:center; gap:14px;
+  padding:14px 18px; background:#f8fafc;
+  border:1.5px dashed #40babd; border-radius:10px; margin-bottom:18px;
+}
+.peon-count-number { font-size:36px; font-weight:700; color:#40babd; line-height:1; }
+.peon-count-label  { font-size:12px; color:#64748b; font-weight:500; }
+.peon-count-formula{ font-size:12px; color:#40babd; margin-top:3px; }
+.auto-badge { margin-left:auto; display:inline-flex; align-items:center; gap:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:11px; font-weight:600; padding:4px 10px; border-radius:100px; }
+.info-note { display:flex; align-items:flex-start; gap:8px; background:#fffbeb; border:1px solid #fcd34d; border-radius:8px; padding:10px 14px; font-size:12px; color:#78350f; margin-bottom:16px; }
+.info-note i { margin-top:1px; color:#d97706; flex-shrink:0; }
+.section-label { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#64748b; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.section-label::after { content:''; flex:1; height:1px; background:#e2e8f0; }
+
+/* ── PEON ROWS ── */
+.peon-rows-wrapper { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+.peon-row {
+  display:grid;
+  grid-template-columns: 32px 1.6fr 1.2fr 0.8fr 34px;
+  gap:10px; align-items:end;
+  padding:14px 16px;
+  background:#fafbfc; border:1px solid #e2e8f0; border-radius:10px;
+  transition:box-shadow .2s;
+  animation:rowIn .25s ease forwards;
+}
+.peon-row:hover { box-shadow:0 2px 12px rgba(64,186,189,0.12); }
+@keyframes rowIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+.peon-num { width:28px; height:28px; background:#40babd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; margin-bottom:2px; }
+.remove-row { width:30px; height:30px; background:#fee2e2; color:#dc2626; border:none; border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition:background .2s; margin-bottom:2px; }
+.remove-row:hover { background:#fca5a5; }
+.peon-summary { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; background:#e6f7f7; border:1px solid #40babd; border-radius:8px; margin-bottom:16px; }
+.summary-total  { font-size:14px; font-weight:700; color:#2d9fa2; }
+.summary-amount { font-size:20px; font-weight:700; color:#16a34a; }
+
+/* ── STAFF TABS ── */
+.staff-tab-bar { display:flex; gap:0; border-bottom:2px solid #e2e8f0; margin-bottom:20px; }
+.staff-tab { padding:10px 24px; font-weight:700; font-size:14px; cursor:pointer; border:none; background:none; border-bottom:3px solid transparent; margin-bottom:-2px; color:#64748b; transition:.2s; }
+.staff-tab.active { color:#40babd; border-bottom-color:#40babd; }
+.staff-panel { display:none; }
+.staff-panel.active { display:block; }
+</style>
+</head>
+
+<body>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="loginPage" class="loginContainer">
+  <img src="logo.png" width="80" alt="VES Logo" style="border-radius:8px;">
+  <h2 style="margin:4px 0 0 0;color:#1e293b;font-size:20px;">VES Exam Supervisor Panel</h2>
+  <p style="margin:0;color:#64748b;font-size:13px;">Sign in with your VES email</p>
+
+  <!--
+    type="text" + inputmode="email": gives email keyboard on mobile
+    WITHOUT browser autocorrect/autocapitalize mutating the value.
+    type="email" on Android silently adds spaces & changes case.
+  -->
+  <input type="text" id="loginMail" placeholder="name@ves.ac.in"
+    autocomplete="username" autocorrect="off" autocapitalize="none"
+    spellcheck="false" inputmode="email">
+
+  <input type="password" id="loginPassword" placeholder="Password"
+    autocomplete="current-password">
+
+  <!-- No inline onclick — event listeners attached in JS below -->
+  <button id="loginBtn" disabled style="opacity:0.6;cursor:not-allowed;">
+    Loading…
+  </button>
+
+  <div id="loginStatus" style="font-size:12px;color:#64748b;min-height:16px;text-align:center;"></div>
+  <div id="loginError" style="color:#dc2626;font-size:13px;display:none;text-align:center;max-width:280px;"></div>
+</div>
+
+<!-- ===== TOP NAVBAR ===== -->
+<div class="topbar">
+  <button class="mobileMenuBtn" onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
+  <div class="topTitle">Exam Supervisor Panel</div>
+  <div id="syncIndicator">
+    <span id="syncDot" style="width:9px;height:9px;border-radius:50%;background:#94a3b8;display:inline-block;transition:background 0.4s;"></span>
+    <span id="syncLabel">Loading…</span>
+    <button onclick="loadAll(false)" title="Refresh now" style="background:rgba(255,255,255,0.15);border:none;color:white;padding:4px 8px;border-radius:5px;font-size:12px;cursor:pointer;margin:0;">↻</button>
+  </div>
+  <div id="userInfoBar" style="display:none;">
+    <span id="userMailLabel"></span>
+    <span id="userRoleBadge"></span>
+    <button onclick="logout()" title="Logout">⏻ Logout</button>
+  </div>
+</div>
+
+<div class="mobileHeader">
+  <button onclick="toggleMobileMenu()"><i class="fas fa-bars"></i></button>
+  <h3>Exam Panel</h3>
+</div>
+
+<div class="layout" id="mainLayout" style="display:none;">
+
+  <!-- ================= SIDEBAR ================= -->
+  <div class="sidebar" id="sidebar">
+    <a onclick="show('dashboard')" class="menu active"><i class="fas fa-home"></i><span>Dashboard</span></a>
+    <a onclick="show('session')" class="menu"><i class="fas fa-calendar"></i><span>Sessions</span></a>
+    <a onclick="show('staff')" class="menu"><i class="fas fa-users"></i><span>Staff</span></a>
+    <a onclick="show('duty')" class="menu"><i class="fas fa-clipboard"></i><span>Duty Entry</span></a>
+    <a onclick="show('payout')" class="menu"><i class="fas fa-file-invoice"></i><span>Payout</span></a>
+    <div class="sidebarFooter">
+      <img src="logo.png" alt="logo" class="footerLogo">
+      <span>VESAC ADMIN</span>
+    </div>
+  </div>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+
+    <!-- ================= DASHBOARD ================= -->
+    <div id="dashboard" class="page active">
+      <h2>Dashboard</h2>
+      <div class="statsGrid">
+        <div class="statCard"><h3 id="statSessions">0</h3><p>Total Sessions</p></div>
+        <div class="statCard"><h3 id="statTeachers">0</h3><p>Total Teachers</p></div>
+        <div class="statCard"><h3 id="statPeons">0</h3><p>Total Peons</p></div>
+        <div class="statCard"><h3 id="statDuties">0</h3><p>Total Duties</p></div>
+      </div>
+      <h2>Sessions</h2>
+      <div id="sessionCards"></div>
+    </div>
+
+    <!-- ================= SESSION ================= -->
+    <div id="session" class="page">
+      <div class="card">
+        <h2>Create Exam Session</h2>
+        <div class="grid">
+          <div><label>Term</label><select id="term"><option>Term I</option><option>Term II</option></select></div>
+          <div><label>Exam Type</label><select id="etype"><option>Regular</option><option>ATKT</option><option>Additional</option></select></div>
+          <div><label>Semester</label><select id="sem"><option>I</option><option>II</option><option>III</option><option>IV</option><option>V</option><option>VI</option></select></div>
+          <div><label>Start Date</label><input type="date" id="d1"></div>
+          <div><label>End Date</label><input type="date" id="d2"></div>
+          <div><label>Start Time</label><input type="time" id="t1"></div>
+          <div><label>End Time</label><input type="time" id="t2"></div>
+        </div>
+        <br>
+        <button onclick="createSession()">Create Session</button>
+      </div>
+    </div>
+
+    <!-- ================= STAFF ================= -->
+    <div id="staff" class="page">
+      <div class="card">
+        <h2>Staff Management</h2>
+
+        <!-- Staff sub-tabs -->
+        <div class="staff-tab-bar">
+          <button class="staff-tab active" id="staffTabTeacher" onclick="switchStaffTab('teacher')">
+            <i class="fas fa-chalkboard-teacher"></i> Teachers
+          </button>
+          <button class="staff-tab" id="staffTabPeon" onclick="switchStaffTab('peon')">
+            <i class="fas fa-person-walking-dashed-line-arrow-right"></i> Peons
+          </button>
+        </div>
+
+        <!-- ── TEACHER PANEL ── -->
+        <div id="staffPanelTeacher" class="staff-panel active">
+          <div class="grid">
+            <input id="newTeacher" placeholder="Enter Teacher Name">
+            <button onclick="addTeacher()">Add Teacher</button>
+          </div>
+          <br>
+          <h3>Upload Excel</h3>
+          <input type="file" id="excelFileTeacher" accept=".xlsx,.xls,.csv">
+          <button onclick="uploadExcel('teacher')">Upload</button>
+          <br><br>
+          <div id="importPreviewBoxTeacher" style="display:none">
+            <h3>Import Preview (Teachers)</h3>
+            <table><thead><tr><th>#</th><th>Name</th></tr></thead><tbody id="importPreviewTableTeacher"></tbody></table>
+            <br>
+            <button onclick="confirmImport('teacher')">Confirm Import</button>
+            <button onclick="cancelImport('teacher')" style="background:gray">Cancel</button>
+          </div>
+          <br>
+          <button id="undoBtnTeacher" onclick="undoDelete('teacher')" style="display:none;background:orange">Undo Delete</button>
+          <br><br>
+          <input id="searchTeacher" placeholder="Search Teacher..." onkeyup="update()">
+          <h3>Total Teachers: <span id="teacherCount">0</span></h3>
+          <button onclick="deleteSelectedStaff('teacher')" style="background:red">Delete Selected</button>
+          <br><br>
+          <table>
+            <thead><tr><th><input type="checkbox" onclick="toggleSelectAll(this,'teacherCheck')"></th><th>#</th><th>Teacher Name</th><th>Action</th></tr></thead>
+            <tbody id="teacherTable"></tbody>
+          </table>
+        </div>
+
+        <!-- ── PEON PANEL ── -->
+        <div id="staffPanelPeon" class="staff-panel">
+          <div class="grid">
+            <input id="newPeon" placeholder="Enter Peon Name">
+            <button onclick="addPeon()">Add Peon</button>
+          </div>
+          <br>
+          <h3>Upload Excel</h3>
+          <input type="file" id="excelFilePeon" accept=".xlsx,.xls,.csv">
+          <button onclick="uploadExcel('peon')">Upload</button>
+          <br><br>
+          <div id="importPreviewBoxPeon" style="display:none">
+            <h3>Import Preview (Peons)</h3>
+            <table><thead><tr><th>#</th><th>Name</th></tr></thead><tbody id="importPreviewTablePeon"></tbody></table>
+            <br>
+            <button onclick="confirmImport('peon')">Confirm Import</button>
+            <button onclick="cancelImport('peon')" style="background:gray">Cancel</button>
+          </div>
+          <br>
+          <button id="undoBtnPeon" onclick="undoDelete('peon')" style="display:none;background:orange">Undo Delete</button>
+          <br><br>
+          <input id="searchPeon" placeholder="Search Peon..." onkeyup="update()">
+          <h3>Total Peons: <span id="peonCount">0</span></h3>
+          <button onclick="deleteSelectedStaff('peon')" style="background:red">Delete Selected</button>
+          <br><br>
+          <table>
+            <thead><tr><th><input type="checkbox" onclick="toggleSelectAll(this,'peonCheck')"></th><th>#</th><th>Peon Name</th><th>Action</th></tr></thead>
+            <tbody id="peonTable"></tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= DUTY ================= -->
+    <div id="duty" class="page">
+      <div class="card" style="padding:0;overflow:hidden">
+
+        <!-- Toggle Bar -->
+        <div class="toggle-bar">
+          <div class="toggle-tabs">
+            <button class="tab-btn active-teacher" id="dutyTabTeacher" onclick="switchDutyMode(false)">
+              <i class="fas fa-chalkboard-teacher"></i> Teacher Duty
+            </button>
+            <button class="tab-btn" id="dutyTabPeon" onclick="switchDutyMode(true)">
+              <i class="fas fa-person-walking-dashed-line-arrow-right"></i> Peon Duty
+            </button>
+          </div>
+          <div class="toggle-right">
+            <span class="lbl-off" id="dutyLblOff">Teacher</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="dutyModeToggle" onchange="switchDutyMode(this.checked)">
+              <span class="toggle-track"></span>
+              <span class="toggle-thumb"></span>
+            </label>
+            <span class="lbl-on" id="dutyLblOn">Peon</span>
+          </div>
+        </div>
+
+        <!-- ══ TEACHER DUTY PANEL ══ -->
+        <div class="duty-panel" id="teacherDutyPanel">
+          <div class="panel-header">
+            <div class="panel-icon icon-teacher"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div><div class="panel-title">Teacher Duty</div><div class="panel-sub">Assign a teacher to an exam session</div></div>
+            <span class="badge-blue">TEACHER</span>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Session</label>
+              <select id="dsession" onchange="changeSession(this.value)"></select>
+            </div>
+            <div>
+              <label>Date</label>
+              <input type="date" id="ddate">
+            </div>
+            <div>
+              <label>Staff Name</label>
+              <div class="searchable-dropdown" id="teacherDropdownWrapper">
+                <input type="text" id="dteacherSearch" placeholder="Search Teacher..." autocomplete="off"
+                  oninput="filterTeacherDropdown()" onfocus="openTeacherDropdown()" onblur="closeTeacherDropdown()">
+                <div id="teacherDropdownList" class="teacher-dropdown-list" style="display:none;"></div>
+                <input type="hidden" id="dteacher">
+              </div>
+            </div>
+            <div>
+              <label>Role</label>
+              <select id="drole">
+                <option value="" disabled selected>Select Role...</option>
+                <option>Chief Conductor</option><option>Joint Chief Conductor</option>
+                <option>Sr. Supervisor</option><option>USS</option>
+                <option>Jr. Supervisor</option>
+              </select>
+            </div>
+            <div>
+              <label>Rate (₹) <span style="font-size:11px;color:#64748b;font-weight:normal">(blank = default)</span></label>
+              <input type="number" id="dcustom_rate" placeholder="e.g. 150" min="0" style="width:100%">
+            </div>
+            <div>
+              <label>Duty Start Time <span style="font-size:11px;color:#64748b;font-weight:normal">(blank = session default)</span></label>
+              <input type="time" id="dduty_t1">
+            </div>
+            <div>
+              <label>Duty End Time <span style="font-size:11px;color:#64748b;font-weight:normal">(blank = session default)</span></label>
+              <input type="time" id="dduty_t2">
+            </div>
+          </div>
+
+          <button id="addDutyBtn" onclick="addDuty()">Add Duty</button>
+          <button id="cancelEditBtn" onclick="cancelDutyEdit()" style="display:none;background:#64748b">✖ Cancel Edit</button>
+          <button onclick="nextDay()">Next Day</button>
+
+          <hr>
+          <h3>Session Records — Teachers</h3>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Block No</th><th>Date</th><th>Staff Name</th>
+                  <th>Role</th><th>Time</th><th>Hours</th><th>Amount</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="dutyRecords"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ══ PEON DUTY PANEL ══ -->
+        <div class="duty-panel hidden" id="peonDutyPanel">
+          <div class="panel-header">
+            <div class="panel-icon icon-peon"><i class="fas fa-person-walking-dashed-line-arrow-right"></i></div>
+            <div><div class="panel-title">Peon Duty</div><div class="panel-sub">Auto-calculates peon count floor-wise from Blocks per Floor</div></div>
+            <span class="badge-teal">PEON</span>
+          </div>
+
+          <div class="info-note">
+            <i class="fas fa-circle-info"></i>
+            <span>Enter blocks per floor. Peon count is auto-calculated for each floor and summed up.</span>
+          </div>
+
+          <div class="grid">
+            <div>
+              <label>Session</label>
+              <select id="pdsession" onchange="changePeonSession(this.value)"></select>
+            </div>
+            <div>
+              <label>Date</label>
+              <input type="date" id="pddate">
+            </div>
+            <div>
+              <label>No. of Floors</label>
+              <input type="number" id="pFloors" min="1" max="10" placeholder="e.g. 3" oninput="generateFloorRows()">
+            </div>
+          </div>
+
+          <!-- Floor-wise block input table -->
+          <div id="floorBlocksSection" style="display:none; margin-top:16px;">
+            <div style="font-weight:600; margin-bottom:8px; color:#374151;">
+              <i class="fas fa-layer-group" style="color:#40babd"></i>
+              Enter number of blocks available on each floor
+            </div>
+            <table id="floorBlocksTable" style="width:auto; min-width:260px; border-collapse:collapse; margin-bottom:4px;">
+              <thead>
+                <tr>
+                  <th style="background:#e6f7f7; color:#2d9fa2; padding:8px 20px; border:1px solid #c7e9ea; text-align:center;">Floor</th>
+                  <th style="background:#e6f7f7; color:#2d9fa2; padding:8px 20px; border:1px solid #c7e9ea; text-align:center;">No. of Blocks</th>
+                </tr>
+              </thead>
+              <tbody id="floorBlocksBody"></tbody>
+            </table>
+          </div>
+
+          <!-- Auto peon count + Total Amount display -->
+          <div class="peon-count-display" id="peonCountBox" style="display:none">
+            <!-- Auto Required (from block rules) -->
+            <div style="text-align:center;padding-right:14px;border-right:1px solid #e2e8f0">
+              <div class="peon-count-number" id="peonCountNum">—</div>
+              <div class="peon-count-label">Auto Required</div>
+            </div>
+            <!-- Assigned Peons (live row count) -->
+            <div style="text-align:center;padding:0 14px;border-right:1px solid #e2e8f0">
+              <div class="peon-count-number" id="assignedPeonCount" style="color:#0891b2">—</div>
+              <div class="peon-count-label">Assigned</div>
+            </div>
+            <!-- Formula -->
+            <div style="flex:1;padding-left:14px;border-right:1px solid #e2e8f0">
+              <div class="peon-count-formula" id="peonFormula">—</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">Auto-calculated</div>
+            </div>
+            <!-- Total Required Amount (fixed, rule-based) -->
+            <div style="text-align:right;padding-left:14px;min-width:90px">
+              <div id="topTotalAmount" style="font-size:26px;font-weight:700;color:#16a34a;line-height:1;transition:color .3s">₹ 0</div>
+              <div style="font-size:11px;color:#64748b;margin-top:3px">Total Required Amount</div>
+            </div>
+            <span class="auto-badge"><i class="fas fa-bolt"></i> Auto</span>
+          </div>
+
+          <div class="section-label" id="peonRowsLabel" style="display:none">
+            <i class="fas fa-users" style="color:#40babd"></i> Assign Peons
+          </div>
+          <div class="peon-rows-wrapper" id="peonRows"></div>
+
+          <!-- Add Peon button — shown once rows are visible -->
+          <div id="addPeonBtnWrap" style="display:none;margin-bottom:12px">
+            <button onclick="addExtraPeonRow()" style="background:#0891b2;display:inline-flex;align-items:center;gap:6px">
+              <i class="fas fa-plus-circle"></i> Add Peon
+            </button>
+          </div>
+
+          <div class="peon-summary" id="peonSummary" style="display:none">
+            <div class="summary-total" id="summaryText">Total: 0 peons × ₹40</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+              <div style="font-size:11px;color:#64748b">Assigned Total</div>
+              <div class="summary-amount" id="assignedTotalAmount">₹ 0</div>
+              <div id="balanceStatus" style="font-size:11px;font-weight:700;margin-top:2px"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+            <button id="peonSubmitBtn" onclick="savePeonDuties()" style="display:none;background:#40babd">
+              <i class="fas fa-check-circle"></i> Save Peon Duty
+            </button>
+            <button onclick="nextPeonDay()" style="background:#6366f1">
+              <i class="fas fa-forward-step"></i> Next Day
+            </button>
+          </div>
+
+          <hr>
+          <h3>Session Records — Peons</h3>
+          <div style="overflow:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align:center">SR No</th><th>Date</th><th>Staff Name</th>
+                  <th>Role</th><th>Time</th><th>Amount</th><th>Action</th><th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="peonDutyRecords"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= PAYOUT ================= -->
+    <div id="payout" class="page">
+      <div class="card">
+        <h2 style="text-align:center">Exam Duty Payment Bill</h2>
+        <div style="margin-bottom:10px">
+          <select id="payoutSession" onchange="changePayoutSession(this.value)">
+            <option value="">Select Session</option>
+          </select>
+        </div>
+
+        <!-- Teacher / Peon Toggle -->
+        <div style="display:flex;align-items:center;gap:14px;margin:14px 0 10px 0;">
+          <span id="payoutLblTeacher" style="font-weight:700;font-size:14px;color:#1e293b;cursor:pointer;" onclick="switchPayoutMode(false)">👩‍🏫 Teacher</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="payoutModeToggle" onchange="switchPayoutMode(this.checked)">
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+          <span id="payoutLblPeon" style="font-weight:700;font-size:14px;color:#64748b;cursor:pointer;" onclick="switchPayoutMode(true)">🧹 Peon</span>
+        </div>
+
+        <hr>
+        <div id="sessionInfo"></div>
+        <br>
+
+        <!-- Teacher Bill -->
+        <div id="teacherBillPanel">
+          <div id="billBody" style="overflow:auto"></div>
+        </div>
+
+        <!-- Peon Bill -->
+        <div id="peonBillPanel" style="display:none;">
+          <div id="peonBillBody" style="overflow:auto"></div>
+        </div>
+      </div>
+      <br>
+
+      <!-- Teacher Buttons -->
+      <div id="teacherPayoutBtns" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+        <button onclick="downloadRecordsPDF()" style="background:#2563eb;"><i class="fas fa-calendar-check"></i> Duty Records PDF</button>
+        <button onclick="downloadBillPDF()" style="background:#16a34a;"><i class="fas fa-file-invoice"></i> Payment Bill PDF</button>
+        <button onclick="downloadBillXLSX()" style="background:#166534;"><i class="fas fa-file-excel"></i> Payment Bill Excel</button>
+      </div>
+
+      <!-- Peon Buttons -->
+      <div id="peonPayoutBtns" style="display:none;gap:10px;flex-wrap:wrap;margin-top:12px;">
+        <button onclick="downloadPeonRecordsPDF()" style="background:#2563eb;"><i class="fas fa-calendar-check"></i> Duty Records PDF</button>
+        <button onclick="downloadPeonBillPDF()" style="background:#2d9fa2;"><i class="fas fa-file-invoice"></i> Payment Bill PDF</button>
+        <button onclick="downloadPeonBillXLSX()" style="background:#0f6674;"><i class="fas fa-file-excel"></i> Payment Bill Excel</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== DUTY DETAILS MODAL ===== -->
+<div id="dutyModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:14px;padding:28px 32px;min-width:300px;max-width:460px;width:90%;box-shadow:0 20px 50px rgba(0,0,0,0.25);position:relative;animation:fadeUp .2s ease">
+    <button onclick="closeDutyModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:20px;color:#94a3b8;cursor:pointer;padding:2px 6px;line-height:1" title="Close">✕</button>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <div style="width:36px;height:36px;background:#e0f7fa;border-radius:8px;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-layer-group" style="color:#0891b2;font-size:16px"></i>
+      </div>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:#1e293b">Duty Details</div>
+        <div style="font-size:12px;color:#64748b" id="dutyModalSubtitle"></div>
+      </div>
+    </div>
+    <div style="font-size:13px;font-weight:600;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em">Block / Floor Breakdown</div>
+    <div id="dutyDetails" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div style="margin-top:20px;text-align:right">
+      <button onclick="closeDutyModal()" style="background:#e2e8f0;color:#334155;padding:8px 20px;font-size:13px">Close</button>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+#dutyModal.open{display:flex!important}
+</style>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const GS_URL =
+  "https://script.google.com/macros/s/AKfycbyCasU1Erhz4zOhFMb4w6GW4K9SXZyBJQvTngOkPeI0GtLbVhI8HB5We6jw5H7OAU1NJQ/exec";
+
+/* ============================================================
+   JSONP GET — reads from Google Sheets
+   ============================================================ */
+function gsGet(sheet) {
+  return new Promise(function (resolve, reject) {
+    var cb = "_cb_" + sheet + "_" + Date.now();
+    var script = document.createElement("script");
+    var done = false;
+    var cleanup = function () {
+      done = true;
+      delete window[cb];
+      try {
+        document.head.removeChild(script);
+      } catch (_) {}
+    };
+    window[cb] = function (data) {
+      cleanup();
+      resolve(Array.isArray(data) ? data : []);
+    };
+    script.onerror = function () {
+      if (done) return;
+      cleanup();
+      reject(new Error("JSONP failed for: " + sheet));
+    };
+    setTimeout(function () {
+      if (done) return;
+      cleanup();
+      reject(new Error("Timeout for: " + sheet));
+    }, 20000);
+    script.src =
+      GS_URL +
+      "?action=getAll&sheet=" +
+      encodeURIComponent(sheet) +
+      "&callback=" +
+      encodeURIComponent(cb) +
+      "&_=" +
+      Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   JSONP POST — all writes go via GET JSONP
+   ============================================================ */
+function gsPost(body) {
+  // Invalidate cache so the next poll fetches fresh data
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch (_) {}
+  return new Promise(function (resolve, reject) {
+    var cb = "_cbw_" + Date.now();
+    var script = document.createElement("script");
+    var done = false;
+    var cleanup = function () {
+      done = true;
+      delete window[cb];
+      try {
+        document.head.removeChild(script);
+      } catch (_) {}
+    };
+    window[cb] = function (data) {
+      cleanup();
+      resolve(data || { status: "ok" });
+    };
+    script.onerror = function () {
+      if (done) return;
+      cleanup();
+      reject(new Error("gsPost failed for: " + body.action));
+    };
+    setTimeout(function () {
+      if (done) return;
+      cleanup();
+      resolve({ status: "timeout_ok" });
+    }, 15000);
+    script.src =
+      GS_URL +
+      "?action=write&payload=" +
+      encodeURIComponent(JSON.stringify(body)) +
+      "&callback=" +
+      encodeURIComponent(cb) +
+      "&_=" +
+      Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+/* ============================================================
+   DATE / TIME HELPERS
+   ============================================================ */
+function cleanDate(val) {
+  if (!val) return "";
+  var s = String(val);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  var d = new Date(s);
+  if (!isNaN(d)) {
+    return (
+      d.getUTCFullYear() +
+      "-" +
+      String(d.getUTCMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(d.getUTCDate()).padStart(2, "0")
+    );
+  }
+  return s;
+}
+function cleanTime(val) {
+  if (!val && val !== 0) return "";
+  var s = String(val).trim();
+  var m = s.match(/^(\d{1,2}):(\d{2})/);
+  if (m) return m[1].padStart(2, "0") + ":" + m[2];
+  var num = parseFloat(s);
+  if (!isNaN(num) && num >= 0 && num < 1) {
+    var totalMin = Math.round(num * 24 * 60);
+    return (
+      String(Math.floor(totalMin / 60)).padStart(2, "0") +
+      ":" +
+      String(totalMin % 60).padStart(2, "0")
+    );
+  }
+  if (s.includes("T")) {
+    var parts = s.split("T")[1].split(":");
+    return parts[0].padStart(2, "0") + ":" + parts[1].padStart(2, "0");
+  }
+  return s;
+}
+function cleanSession(s) {
+  return {
+    ...s,
+    d1: cleanDate(s.d1),
+    d2: cleanDate(s.d2),
+    t1: cleanTime(s.t1),
+    t2: cleanTime(s.t2),
+  };
+}
+
+/* =====STATE===== */
+let sessions = [];
+let teachers = [];
+let peons = []; // NEW — peon staff list
+let duties = []; // teacher duties
+let peonDuties = []; // NEW — peon duties (separate sheet)
+let users = [];       // users for login
+
+let deletedTeachersBackup = [];
+let deletedPeonsBackup = [];
+let importPreviewData = [];
+let importPreviewType = "teacher"; // "teacher" | "peon"
+let currentSessionIndex = 0;
+
+/* ============================================================
+   CACHE HELPERS  (localStorage)
+   ============================================================ */
+var CACHE_KEY = "examDutyCache_v1";
+var CACHE_TTL = 5 * 60 * 1000; // 5 minutes — treat cache as fresh
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ ts: Date.now(), data: data }),
+    );
+  } catch (_) {}
+}
+
+function loadCache() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (!obj || !obj.data) return null;
+    return obj; // { ts, data }
+  } catch (_) {
+    return null;
+  }
+}
+
+function applyRawResults(results) {
+  sessions = results[0].map(cleanSession);
+  teachers = results[1];
+  duties = results[2].map(function (d) {
+    return {
+      ...d,
+      date: cleanDate(d.date),
+      hours: parseFloat(d.hours) || 0,
+      rate: parseFloat(d.rate) || 0,
+      amount: parseFloat(d.amount) || 0,
+      block_no: d.block_no ? String(d.block_no).padStart(2, "0") : "",
+      duty_t1: d.duty_t1 ? cleanTime(d.duty_t1) : "",
+      duty_t2: d.duty_t2 ? cleanTime(d.duty_t2) : "",
+    };
+  });
+  peons = results[3];
+  peonDuties = results[4].map(function (d) {
+    return {
+      ...d,
+      date: cleanDate(d.date),
+      amount: parseFloat(d.amount) || 0,
+      duty_t1: d.duty_t1 ? cleanTime(d.duty_t1) : "",
+      duty_t2: d.duty_t2 ? cleanTime(d.duty_t2) : "",
+    };
+  });
+  users = results[5] || []; // ✅ store users
+}
+
+/* ============================================================
+   SYNC INDICATOR  — small dot in topbar
+   ============================================================ */
+function setSyncStatus(state) {
+  // state: "syncing" | "ok" | "error" | "cached"
+  var dot = document.getElementById("syncDot");
+  var lbl = document.getElementById("syncLabel");
+  if (!dot) return;
+  var map = {
+    syncing: { color: "#facc15", text: "Syncing…" },
+    ok: { color: "#22c55e", text: "Live" },
+    error: { color: "#ef4444", text: "Offline" },
+    cached: { color: "#94a3b8", text: "Cached" },
+  };
+  var s = map[state] || map.ok;
+  dot.style.background = s.color;
+  if (lbl) lbl.textContent = s.text;
+}
+
+/* ============================================================
+   FETCH FROM SHEETS  (always pulls fresh data)
+   ============================================================ */
+async function fetchFromSheets() {
+  var results = await Promise.all([
+    gsGet("sessions"),
+    gsGet("teachers"),
+    gsGet("duties"),
+    gsGet("peons"),
+    gsGet("peon_duties"),
+    gsGet("users"),   // ✅ users for login
+  ]);
+  return results;
+}
+
+/* ============================================================
+   LOAD ALL DATA  — instant from cache, background refresh
+   ============================================================ */
+var _pollTimer = null;
+
+async function loadAll(silent) {
+  if (!GS_URL) {
+    showToast("Set GS_URL in app.js!", "red");
+    return;
+  }
+
+  // ── Step 1: Load from cache instantly if available ──────────
+  var cached = loadCache();
+  if (cached && cached.data) {
+    applyRawResults(cached.data);
+    update();
+    setSyncStatus("cached");
+    if (!silent) showToast("Loaded from cache — syncing…", "#94a3b8");
+  } else {
+    if (!silent) showToast("Loading…", "#3b82f6");
+    setSyncStatus("syncing");
+  }
+
+  // ── Step 2: Always fetch fresh data in background ───────────
+  try {
+    setSyncStatus("syncing");
+    var results = await fetchFromSheets();
+    applyRawResults(results);
+    saveCache(results);
+    update();
+    setSyncStatus("ok");
+    if (!silent) showToast("Data loaded ✓");
+  } catch (err) {
+    if (cached) {
+      setSyncStatus("cached");
+      if (!silent) showToast("Using cached data (offline)", "#f59e0b");
+    } else {
+      setSyncStatus("error");
+      showToast("Load failed! Check connection.", "red");
+    }
+    console.error("loadAll:", err);
+  }
+}
+
+/* ============================================================
+   AUTO-POLL — silently refresh every 30 seconds so changes
+   made on another device appear automatically
+   ============================================================ */
+function startPolling() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(function () {
+    loadAll(true); // silent = no toast
+  }, 30000); // 30 seconds
+}
+
+/* ============================================================
+   PAGE VISIBILITY — pause polling when tab is hidden,
+   resume & immediately sync when user switches back
+   ============================================================ */
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible") {
+    // User came back — sync right away then restart timer
+    loadAll(true);
+    startPolling();
+  } else {
+    if (_pollTimer) clearInterval(_pollTimer);
+  }
+});
+
+/* ============================================================
+   RATE HELPERS
+   ============================================================ */
+function getRate(role) {
+  return (
+    {
+      "Chief Conductor": 200,
+      "Joint Chief Conductor": 150,
+      "Sr. Supervisor": 150,
+      USS: 100,
+      "Jr. Supervisor": 100,
+      "Floor Duty": 100,
+      Packing: 100,
+      Numbering: 100,
+    }[role] || 0
+  );
+}
+
+// ── STEP 7: Auto-show default rate as placeholder when role changes ──
+document.addEventListener("change", function (e) {
+  if (e.target && e.target.id === "drole") {
+    var rateInput = document.getElementById("dcustom_rate");
+    if (rateInput && !rateInput.value) {
+      rateInput.placeholder = "default: ₹" + getRate(e.target.value);
+    }
+  }
+});
+
+// ── Peon rule: 1-2 blocks → 1 peon, 3-4 → 2 peons, 5+ → 3 peons ──
+function getPeonsForBlocks(blocks) {
+  if (blocks <= 0) return 0;
+  if (blocks <= 2) return 1;
+  if (blocks <= 4) return 2;
+  return 3; // 5 or more blocks always = 3 peons
+}
+
+// Legacy wrapper kept for any other callers
+function getPeonData(b, f) {
+  var peonsPerFloor = getPeonsForBlocks(b);
+  return { peons: peonsPerFloor * (f || 1), rate: 40 };
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function show(id) {
+  document.querySelectorAll(".page").forEach(function (p) {
+    p.classList.remove("active");
+  });
+  document.getElementById(id).classList.add("active");
+  // clear active menu
+  document.querySelectorAll(".menu").forEach(function (m) {
+    m.classList.remove("active");
+  });
+  // activate correct menu
+  var menu = document.querySelector('.menu[onclick*="' + id + '"]');
+  if (menu) { menu.classList.add("active"); }
+  if (window.innerWidth <= 1024)
+    document.getElementById("sidebar").classList.remove("show");
+  update();
+}
+
+/* ============================================================
+   STAFF SUB-TABS
+   ============================================================ */
+function switchStaffTab(type) {
+  document
+    .getElementById("staffPanelTeacher")
+    .classList.toggle("active", type === "teacher");
+  document
+    .getElementById("staffPanelPeon")
+    .classList.toggle("active", type === "peon");
+  document
+    .getElementById("staffTabTeacher")
+    .classList.toggle("active", type === "teacher");
+  document
+    .getElementById("staffTabPeon")
+    .classList.toggle("active", type === "peon");
+}
+
+/* ============================================================
+   DUTY MODE TOGGLE (teacher ↔ peon)
+   ============================================================ */
+function switchDutyMode(isPeon) {
+  document.getElementById("dutyModeToggle").checked = isPeon;
+  document.getElementById("dutyTabTeacher").className =
+    "tab-btn" + (isPeon ? "" : " active-teacher");
+  document.getElementById("dutyTabPeon").className =
+    "tab-btn" + (isPeon ? " active-peon" : "");
+  document.getElementById("dutyLblOff").style.color = isPeon
+    ? "#64748b"
+    : "#1e293b";
+  document.getElementById("dutyLblOn").style.color = isPeon
+    ? "#2d9fa2"
+    : "#64748b";
+  document
+    .getElementById("teacherDutyPanel")
+    .classList.toggle("hidden", isPeon);
+  document.getElementById("peonDutyPanel").classList.toggle("hidden", !isPeon);
+  if (!isPeon) resetPeonForm();
+  update();
+}
+
+/* ============================================================
+   SESSION CRUD
+   ============================================================ */
+async function createSession() {
+  var d1El = document.getElementById("d1"),
+    d2El = document.getElementById("d2");
+  if (!d1El.value || !d2El.value) {
+    alert("Select both start and end dates");
+    return;
+  }
+  if (new Date(d2El.value) < new Date(d1El.value)) {
+    alert("End date cannot be before start date");
+    return;
+  }
+  var payload = {
+    term: term.value,
+    etype: etype.value,
+    sem: sem.value,
+    d1: d1El.value,
+    d2: d2El.value,
+    t1: t1.value,
+    t2: t2.value,
+  };
+  if (document.getElementById("session").dataset.editing === "true") {
+    Object.assign(sessions[currentSessionIndex], payload);
+    document.getElementById("session").dataset.editing = "false";
+    update();
+    showToast("Saving...", "#3b82f6");
+    await gsPost({
+      action: "update",
+      sheet: "sessions",
+      data: sessions[currentSessionIndex],
+    });
+    showToast("Session updated ✓");
+  } else {
+    payload.id = String(Date.now());
+    sessions.push(payload);
+    currentSessionIndex = sessions.length - 1;
+    update();
+    showToast("Saving...", "#3b82f6");
+    await gsPost({ action: "insert", sheet: "sessions", data: payload });
+    showToast("Session created ✓");
+  }
+  var dutyLink = document.querySelector('.menu[onclick*="duty"]');
+  if (dutyLink) {
+    window.event = { currentTarget: dutyLink };
+    show("duty");
+  }
+}
+
+async function deleteSession(index) {
+  if (!confirm("Delete this session and all its duties?")) return;
+
+  var sid = String(sessions[index].id);
+
+  // Grab button BEFORE any await — event goes stale after first await
+  var deleteBtn = (window.event && window.event.target) ? window.event.target : null;
+  if (deleteBtn) {
+    deleteBtn.disabled = true;
+    deleteBtn.innerHTML = "\u23f3 Deleting...";
+    deleteBtn.classList.add("delete-loading");
+  }
+
+  // Stop polling AND nuke cache BEFORE any await —
+  // this is the fix: loadAll() reads cache first and would restore the
+  // deleted session, so we kill the cache before anything async runs
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  try { localStorage.removeItem(CACHE_KEY); } catch (e) {}
+
+  showToast("Deleting session...", "#3b82f6");
+
+  try {
+    await gsPost({ action: "deleteBySessionId", sheet: "duties",      data: { session_id: sid } });
+    await gsPost({ action: "deleteBySessionId", sheet: "peon_duties", data: { session_id: sid } });
+    await gsPost({ action: "delete",            sheet: "sessions",    data: { id: sid } });
+
+    // Remove from local arrays — UI updates instantly, card disappears
+    sessions   = sessions.filter(function (s)  { return String(s.id)         !== sid; });
+    duties     = duties.filter(function (d)    { return String(d.session_id) !== sid; });
+    peonDuties = peonDuties.filter(function (d){ return String(d.session_id) !== sid; });
+    currentSessionIndex = Math.max(0, Math.min(currentSessionIndex, sessions.length - 1));
+    update();
+    showToast("Session deleted \u2713");
+
+    // Wait 1.5s for Google Sheets to commit the deletion
+    await new Promise(function (r) { setTimeout(r, 1500); });
+
+    // Fetch directly — do NOT call loadAll() because loadAll reads cache
+    // first and restores the deleted session before fresh data arrives
+    try {
+      setSyncStatus("syncing");
+      var fresh = await fetchFromSheets();
+      applyRawResults(fresh);
+      saveCache(fresh);
+      update();
+      setSyncStatus("ok");
+    } catch (fetchErr) {
+      console.warn("Post-delete sync failed, keeping local state:", fetchErr);
+      setSyncStatus("error");
+    }
+
+    startPolling();
+
+  } catch (err) {
+    console.error("Delete session error:", err);
+    showToast("Delete failed", "red");
+    startPolling();
+  }
+}
+
+
+function editSession(index) {
+  var s = sessions[index];
+  term.value = s.term;
+  etype.value = s.etype;
+  sem.value = s.sem;
+  d1.value = s.d1;
+  d2.value = s.d2;
+  t1.value = s.t1;
+  t2.value = s.t2;
+  currentSessionIndex = index;
+  document.getElementById("session").dataset.editing = "true";
+  var link = document.querySelector('.menu[onclick*="session"]');
+  if (link) {
+    window.event = { currentTarget: link };
+    show("session");
+  }
+}
+
+/* ============================================================
+   TEACHER CRUD
+   ============================================================ */
+async function addTeacher() {
+  var name = document.getElementById("newTeacher").value.trim();
+  if (!name) return;
+  var t = { id: String(Date.now()), name: name };
+  teachers.push(t);
+  document.getElementById("newTeacher").value = "";
+  update();
+  await gsPost({ action: "insert", sheet: "teachers", data: t });
+  showToast("Teacher added ✓");
+}
+
+async function deleteTeacher(index) {
+  deletedTeachersBackup = [...teachers];
+  if (!confirm("Delete this teacher?")) return;
+  var id = teachers[index].id;
+  teachers.splice(index, 1);
+  document.getElementById("undoBtnTeacher").style.display = "inline";
+  update();
+  await gsPost({ action: "delete", sheet: "teachers", data: { id: id } });
+  showToast("Teacher deleted");
+}
+
+/* ============================================================
+   PEON STAFF CRUD
+   ============================================================ */
+async function addPeon() {
+  var name = document.getElementById("newPeon").value.trim();
+  if (!name) return;
+  var p = { id: String(Date.now()), name: name };
+  peons.push(p);
+  document.getElementById("newPeon").value = "";
+  update();
+  await gsPost({ action: "insert", sheet: "peons", data: p });
+  showToast("Peon added ✓");
+}
+
+async function deletePeon(index) {
+  deletedPeonsBackup = [...peons];
+  if (!confirm("Delete this peon?")) return;
+  var id = peons[index].id;
+  peons.splice(index, 1);
+  document.getElementById("undoBtnPeon").style.display = "inline";
+  update();
+  await gsPost({ action: "delete", sheet: "peons", data: { id: id } });
+  showToast("Peon deleted");
+}
+
+async function deleteSelectedStaff(type) {
+  var cls = type === "teacher" ? "teacherCheck" : "peonCheck";
+  var checks = document.querySelectorAll("." + cls + ":checked");
+  if (checks.length === 0) {
+    alert("No staff selected");
+    return;
+  }
+  if (!confirm("Delete selected?")) return;
+  var list = type === "teacher" ? teachers : peons;
+  var backup = [...list];
+  if (type === "teacher") deletedTeachersBackup = backup;
+  else deletedPeonsBackup = backup;
+  var indexes = [];
+  checks.forEach(function (c) {
+    indexes.push(parseInt(c.value));
+  });
+  indexes.sort(function (a, b) {
+    return b - a;
+  });
+  var ids = indexes.map(function (i) {
+    return list[i].id;
+  });
+  indexes.forEach(function (i) {
+    list.splice(i, 1);
+  });
+  document.getElementById(
+    type === "teacher" ? "undoBtnTeacher" : "undoBtnPeon",
+  ).style.display = "inline";
+  update();
+  await gsPost({
+    action: "deleteMany",
+    sheet: type === "teacher" ? "teachers" : "peons",
+    data: { ids: ids },
+  });
+  showToast("Staff deleted");
+}
+
+async function undoDelete(type) {
+  if (type === "teacher") {
+    var toRestore = deletedTeachersBackup.filter(function (b) {
+      return !teachers.find(function (t) {
+        return t.id === b.id;
+      });
+    });
+    teachers = [...teachers, ...toRestore];
+    deletedTeachersBackup = [];
+    document.getElementById("undoBtnTeacher").style.display = "none";
+    update();
+    await gsPost({ action: "insertMany", sheet: "teachers", data: toRestore });
+  } else {
+    var toRestore = deletedPeonsBackup.filter(function (b) {
+      return !peons.find(function (p) {
+        return p.id === b.id;
+      });
+    });
+    peons = [...peons, ...toRestore];
+    deletedPeonsBackup = [];
+    document.getElementById("undoBtnPeon").style.display = "none";
+    update();
+    await gsPost({ action: "insertMany", sheet: "peons", data: toRestore });
+  }
+  showToast("Undo successful ✓");
+}
+
+/* ============================================================
+   EXCEL IMPORT (teachers or peons)
+   ============================================================ */
+function uploadExcel(type) {
+  var fileId = type === "teacher" ? "excelFileTeacher" : "excelFilePeon";
+  var file = document.getElementById(fileId).files[0];
+  if (!file) {
+    alert("Select a file first");
+    return;
+  }
+  importPreviewType = type;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+    var rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {
+      header: 1,
+    });
+    importPreviewData = [];
+    rows.forEach(function (r) {
+      if (r[0]) importPreviewData.push({ name: String(r[0]).trim() });
+    });
+    var tbl = document.getElementById(
+      type === "teacher"
+        ? "importPreviewTableTeacher"
+        : "importPreviewTablePeon",
+    );
+    tbl.innerHTML = "";
+    importPreviewData.forEach(function (t, i) {
+      tbl.innerHTML +=
+        "<tr><td>" + (i + 1) + "</td><td>" + t.name + "</td></tr>";
+    });
+    document.getElementById(
+      type === "teacher" ? "importPreviewBoxTeacher" : "importPreviewBoxPeon",
+    ).style.display = "block";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function confirmImport(type) {
+  if (!importPreviewData.length) return;
+  var newItems = importPreviewData.map(function (t, i) {
+    return { id: String(Date.now() + i), name: t.name };
+  });
+  if (type === "teacher") teachers = [...teachers, ...newItems];
+  else peons = [...peons, ...newItems];
+  var count = newItems.length;
+  importPreviewData = [];
+  document.getElementById(
+    type === "teacher" ? "importPreviewBoxTeacher" : "importPreviewBoxPeon",
+  ).style.display = "none";
+  update();
+  await gsPost({
+    action: "insertMany",
+    sheet: type === "teacher" ? "teachers" : "peons",
+    data: newItems,
+  });
+  showToast(count + " " + type + "s imported ✓");
+}
+
+function cancelImport(type) {
+  importPreviewData = [];
+  document.getElementById(
+    type === "teacher" ? "importPreviewBoxTeacher" : "importPreviewBoxPeon",
+  ).style.display = "none";
+}
+
+/* ============================================================
+   TEACHER DUTY CRUD
+   ============================================================ */
+let editingDutyId = null;
+
+function calcHours(t1, t2) {
+  var h =
+    (new Date("2000-01-01 " + t2) - new Date("2000-01-01 " + t1)) / 3600000;
+  return Math.round(h * 100) / 100;
+}
+
+function _populateDutyForm(d) {
+  var s = sessions[currentSessionIndex];
+  document.getElementById("ddate").value = d.date || "";
+  document.getElementById("dduty_t1").value = d.duty_t1 || s?.t1 || "";
+  document.getElementById("dduty_t2").value = d.duty_t2 || s?.t2 || "";
+  document.getElementById("drole").value = d.role || "Chief Conductor";
+  var t = teachers.find(function (x) {
+    return String(x.id) === String(d.teacher_id);
+  });
+  document.getElementById("dteacher").value = t ? t.id : "";
+  document.getElementById("dteacherSearch").value = t ? t.name : "";
+  document.getElementById("dcustom_rate").value = d.rate || "";
+}
+
+function _clearDutyForm() {
+  var s = sessions[currentSessionIndex];
+  document.getElementById("ddate").value = "";
+  document.getElementById("dduty_t1").value = s?.t1 || "";
+  document.getElementById("dduty_t2").value = s?.t2 || "";
+  document.getElementById("dteacher").value = "";
+  document.getElementById("dteacherSearch").value = "";
+  document.getElementById("dcustom_rate").value = "";
+}
+
+async function addDuty() {
+  if (editingDutyId) {
+    await saveDutyEdit();
+    return;
+  }
+  var s = sessions[currentSessionIndex];
+  if (!s) {
+    alert("Select a session first");
+    return;
+  }
+  if (!ddate.value) {
+    alert("Select a date");
+    return;
+  }
+  var dt1Input = document.getElementById("dduty_t1").value.trim();
+  var dt2Input = document.getElementById("dduty_t2").value.trim();
+  var dt1 = dt1Input ? dt1Input : s.t1;
+  var dt2 = dt2Input ? dt2Input : s.t2;
+  if (!dt1 || !dt2) {
+    alert("Session default time not found");
+    return;
+  }
+  var hours = calcHours(dt1, dt2);
+  if (hours <= 0) {
+    alert("End time must be after start time");
+    return;
+  }
+  var customRate = document.getElementById("dcustom_rate").value.trim();
+  var rate = customRate ? parseFloat(customRate) : getRate(drole.value);
+  if (!rate) {
+    alert("Rate not defined for this role");
+    return;
+  }
+  var teacherId = dteacher.value;
+  if (!teacherId) {
+    alert("Select a teacher");
+    return;
+  }
+  var sessionDuties = duties.filter(function (d) {
+    return String(d.session_id) === String(s.id);
+  });
+  var sameDateDuties = sessionDuties.filter(function (d) {
+    return d.date === ddate.value;
+  });
+  var blockNo = String(sameDateDuties.length + 1).padStart(2, "0");
+  var duty = {
+    id: String(Date.now()),
+    session_id: String(s.id),
+    date: ddate.value,
+    teacher_id: String(teacherId),
+    role: drole.value,
+    hours: hours,
+    rate: rate,
+    amount: rate,
+    block_no: blockNo,
+    duty_t1: dt1,
+    duty_t2: dt2,
+  };
+  duties.push(duty);
+  update();
+  document.getElementById("dcustom_rate").value = "";
+  await gsPost({ action: "insert", sheet: "duties", data: duty });
+  showToast("Duty added ✓");
+}
+
+function editDuty(dutyId) {
+  var d = duties.find(function (x) {
+    return x.id === dutyId;
+  });
+  if (!d) return;
+  editingDutyId = dutyId;
+  _populateDutyForm(d);
+  document.getElementById("addDutyBtn").textContent = "💾 Update Duty";
+  document.getElementById("cancelEditBtn").style.display = "inline-block";
+  document.getElementById("duty").scrollIntoView({ behavior: "smooth" });
+  showToast("✏️  Edit mode — make changes then click Update Duty", "#f59e0b");
+}
+
+function cancelDutyEdit() {
+  editingDutyId = null;
+  _clearDutyForm();
+  document.getElementById("addDutyBtn").textContent = "Add Duty";
+  document.getElementById("cancelEditBtn").style.display = "none";
+}
+
+async function saveDutyEdit() {
+  var d = duties.find(function (x) {
+    return x.id === editingDutyId;
+  });
+  if (!d) {
+    cancelDutyEdit();
+    return;
+  }
+  var s = sessions[currentSessionIndex];
+  var dt1 = document.getElementById("dduty_t1").value || s?.t1 || "";
+  var dt2 = document.getElementById("dduty_t2").value || s?.t2 || "";
+  var hours = calcHours(dt1, dt2);
+  if (hours <= 0) {
+    alert("End time must be after start time");
+    return;
+  }
+  var teacherId = document.getElementById("dteacher").value;
+  if (!teacherId) {
+    alert("Select a teacher");
+    return;
+  }
+  var customRateEdit = document.getElementById("dcustom_rate").value.trim();
+  var rate = customRateEdit ? parseFloat(customRateEdit) : getRate(document.getElementById("drole").value);
+  d.date = document.getElementById("ddate").value;
+  d.teacher_id = String(teacherId);
+  d.role = document.getElementById("drole").value;
+  d.hours = hours;
+  d.rate = rate;
+  d.amount = rate;
+  d.duty_t1 = dt1;
+  d.duty_t2 = dt2;
+  var snapshot = Object.assign({}, d);
+  cancelDutyEdit();
+  update();
+  showToast("Saving to Google Sheets...", "#3b82f6");
+  await gsPost({ action: "update", sheet: "duties", data: snapshot });
+  showToast("Duty updated ✓");
+}
+
+async function deleteDuty(dutyId) {
+  if (!confirm("Delete this duty record?")) return;
+  var idx = duties.findIndex(function (x) {
+    return x.id === dutyId;
+  });
+  if (idx === -1) return;
+  var id = String(duties[idx].id);
+  duties.splice(idx, 1);
+  update();
+  showToast("Deleting...", "#3b82f6");
+  await gsPost({ action: "delete", sheet: "duties", data: { id: id } });
+  showToast("Duty deleted ✓");
+}
+
+/* ============================================================
+   PEON DUTY — FORM
+   ============================================================ */
+// ── Floor-wise block input generation ──────────────────────
+function generateFloorRows() {
+  var f = parseInt(document.getElementById("pFloors").value) || 0;
+  var section = document.getElementById("floorBlocksSection");
+  var tbody = document.getElementById("floorBlocksBody");
+  tbody.innerHTML = "";
+  resetPeonCountOnly();
+
+  if (f <= 0) {
+    section.style.display = "none";
+    return;
+  }
+
+  section.style.display = "block";
+  for (var i = 1; i <= f; i++) {
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td style="text-align:center; padding:8px 20px; border:1px solid #e5e7eb; font-weight:600; color:#374151;">Floor ' +
+      i +
+      "</td>" +
+      '<td style="padding:6px 12px; border:1px solid #e5e7eb; text-align:center;">' +
+      '<input type="number" class="floorBlockInput" data-floor="' +
+      i +
+      '" ' +
+      'min="0" max="20" placeholder="0" ' +
+      'style="width:90px; text-align:center; padding:6px; border:1px solid #ccc; border-radius:6px;" ' +
+      'oninput="recalcPeons()">' +
+      "</td>";
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Build blocksPerFloor array from table inputs ────────────
+function getBlocksPerFloor() {
+  var inputs = document.querySelectorAll(".floorBlockInput");
+  var arr = [];
+  inputs.forEach(function (inp) {
+    arr.push(parseInt(inp.value) || 0);
+  });
+  return arr;
+}
+
+// ── Per-floor peon calculation using range-based rule ──────────
+function calculatePeonsFloorWise(blocksPerFloor) {
+  return blocksPerFloor.reduce(function (total, blocks) {
+    return total + getPeonsForBlocks(blocks);
+  }, 0);
+}
+
+function recalcPeons() {
+  var blocksPerFloor = getBlocksPerFloor();
+  // Only proceed if at least one floor has blocks entered
+  var anyFilled = blocksPerFloor.some(function (b) {
+    return b > 0;
+  });
+  if (!anyFilled) {
+    resetPeonCountOnly();
+    return;
+  }
+  var totalPeons = calculatePeonsFloorWise(blocksPerFloor);
+  var rate = 40;
+
+  // Build formula string e.g. "Floor 1: 2 blk→1p, Floor 2: 3 blk→2p | Total: 3"
+  var parts = blocksPerFloor.map(function (b, i) {
+    return "F" + (i + 1) + ": " + b + " blk→" + getPeonsForBlocks(b) + "p";
+  });
+  var formula = parts.join("  +  ") + "  =  " + totalPeons + " peons";
+
+  document.getElementById("peonCountBox").style.display = "flex";
+  document.getElementById("peonCountNum").textContent = totalPeons;
+  document.getElementById("peonFormula").textContent = formula;
+
+  buildPeonRows(totalPeons, rate);
+}
+
+function resetPeonCountOnly() {
+  document.getElementById("peonCountBox").style.display = "none";
+  document.getElementById("peonRowsLabel").style.display = "none";
+  document.getElementById("peonRows").innerHTML = "";
+  document.getElementById("peonSummary").style.display = "none";
+  document.getElementById("peonSubmitBtn").style.display = "none";
+  document.getElementById("addPeonBtnWrap").style.display = "none";
+  var el = document.getElementById("topTotalAmount");
+  if (el) {
+    el.textContent = "₹ 0";
+    el.style.color = "#16a34a";
+  }
+  var assignedEl = document.getElementById("assignedPeonCount");
+  if (assignedEl) assignedEl.textContent = "—";
+  var assignedAmtEl = document.getElementById("assignedTotalAmount");
+  if (assignedAmtEl) assignedAmtEl.textContent = "₹ 0";
+  var bal = document.getElementById("balanceStatus");
+  if (bal) bal.textContent = "";
+  window._peonExpectedTotal = 0;
+  window._peonDefaultRate = 40;
+}
+
+function resetPeonForm() {
+  resetPeonCountOnly();
+  document.getElementById("pFloors").value = "";
+  document.getElementById("floorBlocksSection").style.display = "none";
+  document.getElementById("floorBlocksBody").innerHTML = "";
+  document.getElementById("pddate").value = "";
+}
+
+function buildPeonRows(count, rate) {
+  var w = document.getElementById("peonRows");
+  w.innerHTML = "";
+  for (var i = 0; i < count; i++) {
+    w.appendChild(makePeonRow(i + 1, rate));
+  }
+  document.getElementById("peonRowsLabel").style.display = "flex";
+  document.getElementById("peonSummary").style.display = "flex";
+  document.getElementById("peonSubmitBtn").style.display = "inline-flex";
+  document.getElementById("addPeonBtnWrap").style.display = "block";
+  // _peonDefaultRate holds the per-peon rate for expected-total recalculation
+  window._peonDefaultRate = rate;
+  // Expected total = auto required peons × rate — FIXED until blocks/floors change
+  window._peonExpectedTotal = count * rate;
+  // Set the TOP banner to the fixed Expected Total
+  var topEl = document.getElementById("topTotalAmount");
+  if (topEl) topEl.textContent = "₹ " + window._peonExpectedTotal;
+  updatePeonSummaryCount(count, rate);
+}
+
+/* Derive "B{block}-F{floor}" label for a given 0-based peon index */
+function getPeonBlockFloorLabel(blockIdx0, floors, peonIdx0) {
+  // peonIdx0 is 0-based absolute index across all rows
+  // Each block has `floors` peons. blockNum = floor(peonIdx0 / floors) + 1
+  // floorNum = (peonIdx0 % floors) + 1
+  var blockNum = Math.floor(peonIdx0 / floors) + 1;
+  var floorNum = (peonIdx0 % floors) + 1;
+  if (floors === 1) return "B" + blockNum;
+  return "B" + blockNum + "-F" + floorNum;
+}
+
+function makePeonRow(idx, rate) {
+  var d = document.createElement("div");
+  d.className = "peon-row";
+  var options = peons
+    .map(function (p) {
+      return '<option value="' + p.id + '">' + p.name + "</option>";
+    })
+    .join("");
+  d.innerHTML = `
+    <div class="peon-num">${String(idx).padStart(2, "0")}</div>
+    <div class="field">
+      <label>Peon Name</label>
+      <select class="peonRowSelect"><option value="">— Select Peon —</option>${options}</select>
+    </div>
+    <div class="field">
+      <label>Role / Duty</label>
+      <input type="text" class="peonRowRole" placeholder="e.g. Hall Peon, Gate Duty">
+    </div>
+    <div class="field">
+      <label>Rate (₹)</label>
+      <input type="number" class="peonRowRate" value="${rate}" min="0" oninput="updatePeonSummaryFromRows()">
+    </div>
+    <button class="remove-row" onclick="removePeonRow(this)" title="Remove"><i class="fas fa-times"></i></button>
+  `;
+  return d;
+}
+
+function removePeonRow(btn) {
+  btn.closest(".peon-row").remove();
+  document.querySelectorAll(".peon-row").forEach(function (r, i) {
+    r.querySelector(".peon-num").textContent = String(i + 1).padStart(2, "0");
+  });
+  if (document.querySelectorAll(".peon-row").length === 0) {
+    document.getElementById("addPeonBtnWrap").style.display = "none";
+  }
+  updatePeonSummaryFromRows();
+}
+
+function updatePeonSummaryCount(count, rate) {
+  var expected = count * rate;
+  // Seed the Assigned counter to match Auto Required on initial build
+  var assignedEl = document.getElementById("assignedPeonCount");
+  if (assignedEl) assignedEl.textContent = count;
+  // summaryText always shows the RULE calculation (unchanged)
+  document.getElementById("summaryText").textContent =
+    "Total: " + count + " peons × ₹" + rate + " = ₹" + expected;
+  // Seed assigned total display and run balance check
+  updateAssignedTotal();
+}
+
+function updatePeonSummaryFromRows() {
+  // Called when peon rows are added/removed; updates assigned count display only
+  var rows = document.querySelectorAll(".peon-row");
+  var assignedCount = rows.length;
+  var assignedEl = document.getElementById("assignedPeonCount");
+  if (assignedEl) assignedEl.textContent = assignedCount;
+  updateAssignedTotal();
+}
+
+// ── Calculate sum of all peon row rates ────────────────────
+function calculateAssignedTotal() {
+  var total = 0;
+  document.querySelectorAll(".peonRowRate").forEach(function (inp) {
+    total += Number(inp.value || 0);
+  });
+  return total;
+}
+
+// ── Update Assigned Total display + balance check ──────────
+function updateAssignedTotal() {
+  var assignedTotal = calculateAssignedTotal();
+  var expectedTotal = window._peonExpectedTotal || 0;
+
+  var assignedAmtEl = document.getElementById("assignedTotalAmount");
+  if (assignedAmtEl) assignedAmtEl.textContent = "₹ " + assignedTotal;
+
+  var bal = document.getElementById("balanceStatus");
+  if (!bal) return;
+  if (expectedTotal <= 0) {
+    bal.textContent = "";
+    return;
+  }
+  if (assignedTotal === expectedTotal) {
+    bal.textContent = "✔ Balanced";
+    bal.style.color = "green";
+  } else {
+    bal.textContent = "❌ Not Balanced";
+    bal.style.color = "red";
+  }
+}
+
+// ── Live Total Amount display + green/red validation (legacy — kept for safety) ────────
+function calculateTotalAmount() {
+  return calculateAssignedTotal();
+}
+
+function validateTotalAmount(expectedTotal) {
+  // Legacy function — all logic now in updateAssignedTotal()
+  updateAssignedTotal();
+}
+
+// ── Add an extra peon row beyond the calculated count ───────
+function addExtraPeonRow() {
+  var rows = document.querySelectorAll(".peon-row");
+  var defaultRate = window._peonDefaultRate || 40;
+  var w = document.getElementById("peonRows");
+  w.appendChild(makePeonRow(rows.length + 1, defaultRate));
+  document.getElementById("peonSummary").style.display = "flex";
+  document.getElementById("peonSubmitBtn").style.display = "inline-flex";
+  updatePeonSummaryFromRows();
+}
+
+async function savePeonDuties() {
+  var s = sessions[currentSessionIndex];
+  if (!s) {
+    alert("Select a session first");
+    return;
+  }
+  var date = document.getElementById("pddate").value;
+  if (!date) {
+    alert("Select a date");
+    return;
+  }
+  var rows = document.querySelectorAll(".peon-row");
+  if (rows.length === 0) {
+    alert("No peon rows to save");
+    return;
+  }
+
+  var st = s.t1 || "";
+  var et = s.t2 || "";
+
+  var _pfF = parseInt(document.getElementById("pFloors").value) || 0;
+  var blocksPerFloor = getBlocksPerFloor();
+  // e.g. "F1:2,F2:3,F3:1"
+  var batchBlockFloor = blocksPerFloor
+    .map(function (b, i) {
+      return "F" + (i + 1) + ":" + b;
+    })
+    .join(",");
+
+  var newDuties = [];
+  var srOffset = peonDuties.filter(function (d) {
+    return String(d.session_id) === String(s.id) && d.date === date;
+  }).length;
+
+  var calculatedCount =
+    parseInt(document.getElementById("peonCountNum").textContent) || 0;
+
+  rows.forEach(function (row, i) {
+    var peonId = row.querySelector(".peonRowSelect").value;
+    if (!peonId) return; // skip unassigned rows
+    newDuties.push({
+      id: String(Date.now() + i),
+      session_id: String(s.id),
+      date: date,
+      peon_id: peonId,
+      role: row.querySelector(".peonRowRole").value || "Peon",
+      duty_t1: st,
+      duty_t2: et,
+      block_floor: batchBlockFloor,
+      amount: parseInt(row.querySelector(".peonRowRate").value) || 40,
+      sr_no: String(srOffset + i + 1).padStart(2, "0"),
+      is_extra: i >= calculatedCount ? "yes" : "no",
+    });
+  });
+
+  if (newDuties.length === 0) {
+    alert("Assign at least one peon");
+    return;
+  }
+
+  peonDuties = [...peonDuties, ...newDuties];
+  resetPeonForm();
+  update();
+  showToast("Saving peon duties...", "#3b82f6");
+  for (var pd of newDuties) {
+    await gsPost({ action: "insert", sheet: "peon_duties", data: pd });
+  }
+  // Also save floor-wise block summary to peon_duty_floors sheet
+  var blocksArr = getBlocksPerFloor().filter(function (b) {
+    return b > 0;
+  });
+  if (blocksArr.length > 0) {
+    await gsPost({
+      action: "insertPeonDutyFloorWise",
+      sheet: "peon_duty_floors",
+      data: { session: s.term || String(s.id), date: date, blocks: blocksArr },
+    });
+  }
+  showToast(newDuties.length + " peon duties saved ✓");
+}
+
+async function deletePeonDuty(dutyId) {
+  if (!confirm("Delete this peon duty record?")) return;
+  var idx = peonDuties.findIndex(function (x) {
+    return x.id === dutyId;
+  });
+  if (idx === -1) return;
+  var id = String(peonDuties[idx].id);
+  peonDuties.splice(idx, 1);
+  update();
+  showToast("Deleting...", "#3b82f6");
+  await gsPost({ action: "delete", sheet: "peon_duties", data: { id: id } });
+  showToast("Peon duty deleted ✓");
+}
+
+/* ── Duty Details Modal ── */
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest(".view-duty-btn");
+  if (!btn) return;
+  var raw = btn.getAttribute("data-duty");
+  var payload = {};
+  try {
+    payload = JSON.parse(decodeURIComponent(raw));
+  } catch (_) {}
+
+  var bfRaw = payload.bf || "";
+  var subtitle = document.getElementById("dutyModalSubtitle");
+  if (subtitle)
+    subtitle.textContent =
+      (payload.name || "") + (payload.date ? "  ·  " + payload.date : "");
+
+  var html = "";
+  if (bfRaw) {
+    var floors = bfRaw.split(",");
+    floors.forEach(function (f) {
+      var parts = f.split(":");
+      var floorNum = (parts[0] || "").replace(/[Ff]/g, "").trim();
+      var blocks = (parts[1] || "—").trim();
+      html += `<div style="display:flex;align-items:center;justify-content:space-between;
+                  background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;
+                  padding:10px 16px;font-size:14px">
+        <span style="font-weight:600;color:#334155">
+          <i class="fas fa-layer-group" style="color:#0891b2;margin-right:8px"></i>
+          Floor ${floorNum}
+        </span>
+        <span style="background:#0891b2;color:white;border-radius:6px;
+                     padding:3px 12px;font-weight:700;font-size:13px">
+          ${blocks} Block${blocks !== "1" ? "s" : ""}
+        </span>
+      </div>`;
+    });
+  } else {
+    html = `<div style="color:#94a3b8;font-size:13px;text-align:center;padding:16px 0">
+              No block/floor data available for this record.
+            </div>`;
+  }
+
+  document.getElementById("dutyDetails").innerHTML = html;
+  document.getElementById("dutyModal").classList.add("open");
+});
+
+function closeDutyModal() {
+  document.getElementById("dutyModal").classList.remove("open");
+}
+
+// Close modal on backdrop click
+document.addEventListener("click", function (e) {
+  var modal = document.getElementById("dutyModal");
+  if (modal && e.target === modal) closeDutyModal();
+});
+
+function nextPeonDay() {
+  var cur = new Date(document.getElementById("pddate").value);
+  if (isNaN(cur)) {
+    document.getElementById("pddate").value =
+      sessions[currentSessionIndex]?.d1 || "";
+    return;
+  }
+  cur.setDate(cur.getDate() + 1);
+  document.getElementById("pddate").value = cur.toISOString().split("T")[0];
+}
+
+/* ============================================================
+   UPDATE UI
+   ============================================================ */
+function update() {
+  /* Stats */
+  document.getElementById("statSessions").innerText = sessions.length;
+  document.getElementById("statTeachers").innerText = teachers.length;
+  document.getElementById("statPeons").innerText = peons.length;
+  document.getElementById("statDuties").innerText =
+    duties.length + peonDuties.length;
+
+  /* Session Cards */
+  sessionCards.innerHTML = "";
+  var grouped = {};
+  sessions.forEach(function (s, i) {
+    var y = getAcademicYear(s.d1);
+    if (!grouped[y]) grouped[y] = [];
+    grouped[y].push({ session: s, index: i });
+  });
+  for (var yr in grouped) {
+    sessionCards.innerHTML +=
+      '<div class="yearHeader">Academic Year: ' + yr + "</div>";
+    grouped[yr].forEach(function (obj) {
+      var s = obj.session,
+        i = obj.index;
+      sessionCards.innerHTML += `
+        <div class="card">
+          <b>${s.term} ${s.etype} Sem ${s.sem}</b><br>
+          <span style="color:#64748b;font-size:13px">Academic Year: ${yr}</span><br>
+          ${s.d1} → ${s.d2}<br>${s.t1} - ${s.t2}<br><br>
+          <button onclick="openSession(${i})">Open</button>
+          <button onclick="editSession(${i})">Edit</button>
+          <button onclick="deleteSession(${i})" style="background:red">Delete</button>
+          <button onclick="downloadBillPDF(${i})">Bill PDF</button>
+        </div>`;
+    });
+  }
+
+  /* Session dropdowns */
+  var activeSid = sessions[currentSessionIndex]?.id || "";
+  var sessionOptHtml = '<option value="">-- Select Session --</option>';
+  sessions.forEach(function (s) {
+    sessionOptHtml +=
+      '<option value="' +
+      s.id +
+      '">' +
+      s.term +
+      " " +
+      s.etype +
+      " Sem " +
+      s.sem +
+      " (" +
+      s.d1 +
+      ")</option>";
+  });
+  dsession.innerHTML = sessionOptHtml;
+  dsession.value = activeSid;
+
+  var pds = document.getElementById("pdsession");
+  if (pds) {
+    pds.innerHTML = sessionOptHtml;
+    pds.value = activeSid;
+  }
+
+  /* Teacher dropdown list */
+  var tdl = document.getElementById("teacherDropdownList");
+  if (tdl) {
+    tdl.innerHTML = "";
+    teachers.forEach(function (t, i) {
+      tdl.innerHTML +=
+        '<div class="teacher-option" onclick="selectTeacher(' +
+        i +
+        ",'" +
+        t.name.replace(/'/g, "\\'") +
+        "','" +
+        t.id +
+        "')\">" +
+        t.name +
+        "</div>";
+    });
+  }
+
+  /* Teacher table */
+  teacherTable.innerHTML = "";
+  var searchT = (
+    document.getElementById("searchTeacher")?.value || ""
+  ).toLowerCase();
+  teachers.forEach(function (t, i) {
+    if (!t.name.toLowerCase().includes(searchT)) return;
+    teacherTable.innerHTML +=
+      "<tr><td><input type='checkbox' class='teacherCheck' value='" +
+      i +
+      "'></td><td>" +
+      (i + 1) +
+      "</td><td>" +
+      t.name +
+      "</td><td><button onclick='deleteTeacher(" +
+      i +
+      ")' style='background:red'>Delete</button></td></tr>";
+  });
+  document.getElementById("teacherCount").innerText = teachers.length;
+
+  /* Peon table */
+  peonTable.innerHTML = "";
+  var searchP = (
+    document.getElementById("searchPeon")?.value || ""
+  ).toLowerCase();
+  peons.forEach(function (p, i) {
+    if (!p.name.toLowerCase().includes(searchP)) return;
+    peonTable.innerHTML +=
+      "<tr><td><input type='checkbox' class='peonCheck' value='" +
+      i +
+      "'></td><td>" +
+      (i + 1) +
+      "</td><td>" +
+      p.name +
+      "</td><td><button onclick='deletePeon(" +
+      i +
+      ")' style='background:red'>Delete</button></td></tr>";
+  });
+  document.getElementById("peonCount").innerText = peons.length;
+
+  /* ── TEACHER DUTY RECORDS ── */
+  var activeSession = sessions[currentSessionIndex];
+  var filteredDuties = duties.filter(function (d) {
+    return String(d.session_id) === String(activeSession?.id);
+  });
+
+  var blockMap = {};
+  var sortedForBlock = [...filteredDuties].sort(function (a, b) {
+    return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+  });
+  sortedForBlock.forEach(function (d) {
+    if (d.block_no) blockMap[d.id] = String(d.block_no).padStart(2, "0");
+    else {
+      var sameDate = sortedForBlock.filter(function (x) {
+        return x.date === d.date;
+      });
+      blockMap[d.id] = String(sameDate.indexOf(d) + 1).padStart(2, "0");
+    }
+  });
+
+  var rh = "";
+  filteredDuties.forEach(function (d) {
+    var t = teachers.find(function (t) {
+      return String(t.id) === String(d.teacher_id);
+    });
+    var bn = blockMap[d.id] || "01";
+    var s = sessions[currentSessionIndex];
+    var timeStr =
+      d.duty_t1 && d.duty_t2
+        ? d.duty_t1 + " – " + d.duty_t2
+        : s?.t1 && s?.t2
+          ? s.t1 + " – " + s.t2
+          : "—";
+    rh += `<tr>
+      <td style="text-align:center;font-weight:bold;color:#1e40af">${bn}</td>
+      <td>${d.date || ""}</td>
+      <td>${t?.name || "Unknown"}</td>
+      <td>${d.role}</td>
+      <td style="text-align:center;white-space:nowrap">${timeStr}</td>
+      <td style="text-align:center">${d.hours} hrs</td>
+      <td style="text-align:right">₹ ${d.amount}</td>
+      <td style="white-space:nowrap">
+        <button onclick="editDuty('${d.id}')" style="background:#f59e0b;padding:4px 10px;font-size:12px;margin:1px">✏️ Edit</button>
+        <button onclick="deleteDuty('${d.id}')" style="background:#dc2626;padding:4px 10px;font-size:12px;margin:1px">🗑️ Del</button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById("dutyRecords").innerHTML = rh;
+
+  /* ── PEON DUTY RECORDS ── */
+  var filteredPeonDuties = peonDuties.filter(function (d) {
+    return String(d.session_id) === String(activeSession?.id);
+  });
+  var pr = "";
+  filteredPeonDuties.forEach(function (d, i) {
+    var p = peons.find(function (p) {
+      return String(p.id) === String(d.peon_id);
+    });
+    var s = sessions[currentSessionIndex];
+    var timeStr =
+      d.duty_t1 && d.duty_t2
+        ? d.duty_t1 + " – " + d.duty_t2
+        : s?.t1 && s?.t2
+          ? s.t1 + " – " + s.t2
+          : "—";
+    var srNum = String(i + 1).padStart(2, "0");
+    var bfRaw = (d.block_floor || "").replace(/\s/g, "");
+    // Encode duty data safely for the data attribute
+    var dutyData = encodeURIComponent(
+      JSON.stringify({
+        bf: bfRaw,
+        name: p?.name || "Unknown",
+        date: d.date || "",
+      }),
+    );
+    pr += `<tr>
+      <td style="text-align:center;font-weight:700;color:#2d9fa2">${srNum}</td>
+      <td>${d.date || ""}</td>
+      <td>${p?.name || "Unknown"}</td>
+      <td>${d.role || ""}</td>
+      <td style="text-align:center;white-space:nowrap">${timeStr}</td>
+      <td style="text-align:right">₹ ${d.amount}</td>
+      <td style="white-space:nowrap">
+        <button onclick="deletePeonDuty('${d.id}')" style="background:#dc2626;padding:4px 10px;font-size:12px;margin:1px">🗑️ Del</button>
+      </td>
+      <td style="text-align:center">
+        <button class="view-duty-btn" data-duty="${dutyData}"
+          style="background:#0891b2;padding:4px 12px;font-size:12px;margin:1px;display:inline-flex;align-items:center;gap:5px">
+          <i class="fas fa-eye" style="pointer-events:none"></i> View
+        </button>
+      </td>
+    </tr>`;
+  });
+  document.getElementById("peonDutyRecords").innerHTML = pr;
+
+  /* ── BILL BODY (teachers only) ── */
+  var summary = {},
+    grandTotal = 0;
+  filteredDuties.forEach(function (d) {
+    var t = teachers.find(function (t) {
+      return String(t.id) === String(d.teacher_id);
+    });
+    var name = t?.name || "Unknown",
+      key = name + "_" + d.role;
+    if (!summary[key])
+      summary[key] = {
+        teacher: name,
+        role: d.role,
+        count: 0,
+        hours: 0,
+        amount: 0,
+      };
+    summary[key].count++;
+    summary[key].hours += parseFloat(d.hours) || 0;
+    summary[key].amount += parseFloat(d.amount) || 0;
+  });
+  var html =
+    "<table><tr><th>Staff Name</th><th>Role</th><th>No. of Duties</th><th>Total Hours</th><th>Total Amount</th></tr>";
+  for (var k in summary) {
+    html +=
+      "<tr><td>" +
+      summary[k].teacher +
+      "</td><td>" +
+      summary[k].role +
+      "</td><td>" +
+      summary[k].count +
+      "</td><td>" +
+      summary[k].hours +
+      "</td><td>₹ " +
+      summary[k].amount +
+      "</td></tr>";
+    grandTotal += summary[k].amount;
+  }
+  html +=
+    '<tr style="font-weight:bold"><td colspan="4">Grand Total</td><td>₹ ' +
+    grandTotal +
+    "</td></tr></table>";
+  document.getElementById("billBody").innerHTML = html;
+
+  /* ── PEON BILL BODY ── */
+  var peonSummary = {},
+    peonGrandTotal = 0;
+  filteredPeonDuties.forEach(function (d) {
+    var p = peons.find(function (p) {
+      return String(p.id) === String(d.peon_id);
+    });
+    var name = p?.name || "Unknown";
+    if (!peonSummary[name])
+      peonSummary[name] = { name: name, distribute: 0, total: 0 };
+    peonSummary[name].distribute += parseFloat(d.amount) || 0;
+    peonSummary[name].total += parseFloat(d.amount) || 0;
+  });
+  var peonHtml =
+    "<table><tr><th>Staff Name</th><th>Distribute</th><th>Total</th></tr>";
+  for (var pk in peonSummary) {
+    peonHtml +=
+      "<tr><td>" +
+      peonSummary[pk].name +
+      "</td><td>₹ " +
+      peonSummary[pk].distribute +
+      "</td><td>₹ " +
+      peonSummary[pk].total +
+      "</td></tr>";
+    peonGrandTotal += peonSummary[pk].total;
+  }
+  peonHtml +=
+    '<tr style="font-weight:bold;background:#f0fdfa"><td>Grand Total</td><td>₹ ' +
+    peonGrandTotal +
+    "</td><td>₹ " +
+    peonGrandTotal +
+    "</td></tr></table>";
+  var peonBillBodyEl = document.getElementById("peonBillBody");
+  if (peonBillBodyEl) peonBillBodyEl.innerHTML = peonHtml;
+
+  if (activeSession) {
+    document.getElementById("sessionInfo").innerHTML = `
+      <p><b>Academic Year:</b> ${getAcademicYear(activeSession.d1)}</p>
+      <p><b>Term:</b> ${activeSession.term}</p>
+      <p><b>Exam Type:</b> ${activeSession.etype}</p>
+      <p><b>Semester:</b> ${activeSession.sem}</p>
+      <p><b>Exam Dates:</b> ${activeSession.d1} to ${activeSession.d2}</p>
+      <p><b>Exam Time:</b> ${activeSession.t1} - ${activeSession.t2}</p><hr>`;
+  }
+
+  /* Payout session dropdown */
+  var ps = document.getElementById("payoutSession");
+  if (ps) {
+    ps.innerHTML = sessionOptHtml;
+    ps.value = activeSid;
+  }
+
+  /* Refresh peon row selects if peon panel is open */
+  refreshPeonRowSelects();
+}
+
+/* ============================================================
+   SESSION HELPERS
+   ============================================================ */
+function openSession(index) {
+  currentSessionIndex = index;
+  var link = document.querySelector('.menu[onclick*="duty"]');
+  if (link) {
+    window.event = { currentTarget: link };
+    show("duty");
+  }
+  update();
+}
+function changeSession(sid) {
+  if (!sid) return;
+  var idx = sessions.findIndex(function (s) {
+    return String(s.id) === String(sid);
+  });
+  if (idx === -1) return;
+  currentSessionIndex = idx;
+  var s = sessions[currentSessionIndex];
+  if (s) {
+    var t1el = document.getElementById("dduty_t1");
+    var t2el = document.getElementById("dduty_t2");
+    if (t1el) t1el.value = s.t1 || "";
+    if (t2el) t2el.value = s.t2 || "";
+  }
+  update();
+}
+function changePeonSession(sid) {
+  if (!sid) return;
+  var idx = sessions.findIndex(function (s) {
+    return String(s.id) === String(sid);
+  });
+  if (idx === -1) return;
+  currentSessionIndex = idx;
+  update();
+}
+function changePayoutSession(sid) {
+  if (!sid) return;
+  var idx = sessions.findIndex(function (s) {
+    return String(s.id) === String(sid);
+  });
+  if (idx === -1) return;
+  currentSessionIndex = idx;
+  update();
+}
+
+/* ============================================================
+   PAYOUT MODE TOGGLE (teacher ↔ peon)
+   ============================================================ */
+function switchPayoutMode(isPeon) {
+  document.getElementById("payoutModeToggle").checked = isPeon;
+  document.getElementById("payoutLblTeacher").style.color = isPeon
+    ? "#64748b"
+    : "#1e293b";
+  document.getElementById("payoutLblPeon").style.color = isPeon
+    ? "#2d9fa2"
+    : "#64748b";
+  document.getElementById("teacherBillPanel").style.display = isPeon
+    ? "none"
+    : "block";
+  document.getElementById("peonBillPanel").style.display = isPeon
+    ? "block"
+    : "none";
+  document.getElementById("teacherPayoutBtns").style.display = isPeon
+    ? "none"
+    : "flex";
+  document.getElementById("peonPayoutBtns").style.display = isPeon
+    ? "flex"
+    : "none";
+}
+function getAcademicYear(dateStr) {
+  var d = new Date(dateStr),
+    y = d.getFullYear(),
+    m = d.getMonth() + 1;
+  return m >= 6 ? y + "-" + (y + 1) : y - 1 + "-" + y;
+}
+function nextDay() {
+  var cur = new Date(ddate.value);
+  if (isNaN(cur)) {
+    ddate.value = sessions[currentSessionIndex]?.d1 || "";
+    return;
+  }
+  cur.setDate(cur.getDate() + 1);
+  ddate.value = cur.toISOString().split("T")[0];
+}
+
+/* ============================================================
+   TEACHER DROPDOWN
+   ============================================================ */
+function openTeacherDropdown() {
+  document.getElementById("teacherDropdownList").style.display = "block";
+}
+function closeTeacherDropdown() {
+  setTimeout(function () {
+    document.getElementById("teacherDropdownList").style.display = "none";
+  }, 200);
+}
+function filterTeacherDropdown() {
+  var v = document.getElementById("dteacherSearch").value.toLowerCase();
+  document.querySelectorAll(".teacher-option").forEach(function (el) {
+    el.style.display = el.innerText.toLowerCase().includes(v)
+      ? "block"
+      : "none";
+  });
+}
+function selectTeacher(index, name, id) {
+  document.getElementById("dteacher").value = id;
+  document.getElementById("dteacherSearch").value = name;
+  document.getElementById("teacherDropdownList").style.display = "none";
+}
+function toggleSelectAll(src, cls) {
+  document.querySelectorAll("." + cls).forEach(function (c) {
+    c.checked = src.checked;
+  });
+}
+
+/* ============================================================
+   PEON ROW SELECTS — refresh when peons list changes
+   ============================================================ */
+function refreshPeonRowSelects() {
+  var options =
+    '<option value="">— Select Peon —</option>' +
+    peons
+      .map(function (p) {
+        return '<option value="' + p.id + '">' + p.name + "</option>";
+      })
+      .join("");
+  document.querySelectorAll(".peonRowSelect").forEach(function (sel) {
+    var val = sel.value;
+    sel.innerHTML = options;
+    sel.value = val;
+  });
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function showToast(msg, color) {
+  var t = document.getElementById("toast");
+  t.innerText = msg;
+  t.style.background = color || "#22c55e";
+  t.style.display = "block";
+  setTimeout(function () {
+    t.style.display = "none";
+  }, 3000);
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+function toggleMobileMenu() {
+  document.getElementById("sidebar").classList.toggle("show");
+}
+
+
+/* ============================================================
+   PDF 1 — DUTY RECORDS
+   ============================================================ */
+function downloadRecordsPDF(sessionIndex) {
+  var idx = sessionIndex != null ? sessionIndex : currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var doc = new window.jspdf.jsPDF();
+  var pw = doc.internal.pageSize.getWidth(),
+    ph = doc.internal.pageSize.getHeight();
+  var ay = getAcademicYear(s.d1);
+  var y = addPdfHeader(doc, "EXAM REMUNERATION BILL (DATEWISE)", s, ay) - 15;
+  var fd = duties
+    .filter(function (d) {
+      return String(d.session_id) === String(s.id);
+    })
+    .sort(function (a, b) {
+      return a.date.localeCompare(b.date);
+    });
+  if (!fd.length) {
+    doc.text("No records.", 14, y + 55);
+    doc.save("Duty_Records.pdf");
+    return;
+  }
+  var dg = {};
+  fd.forEach(function (d) {
+    if (!dg[d.date]) dg[d.date] = [];
+    dg[d.date].push(d);
+  });
+  var sd = Object.keys(dg).sort(),
+    cy = y + 50,
+    tc = 0;
+  sd.forEach(function (date) {
+    var dn = new Date(date).toLocaleDateString("en-IN", { weekday: "long" });
+    doc.autoTable({
+      startY: cy,
+      head: [],
+      body: [
+        [
+          {
+            content: date + "  (" + dn + ")",
+            colSpan: 5,
+            styles: {
+              fontStyle: "bold",
+              fillColor: [37, 99, 235],
+              textColor: 255,
+              fontSize: 10,
+              cellPadding: 4,
+              halign: "left",
+            },
+          },
+        ],
+      ],
+      theme: "plain",
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+    });
+    cy = doc.lastAutoTable.finalY;
+    var dataRows = [];
+    dg[date].forEach(function (d, i) {
+      var t = teachers.find(function (t) {
+        return String(t.id) === String(d.teacher_id);
+      });
+      var bn = d.block_no
+        ? String(d.block_no).padStart(2, "0")
+        : String(i + 1).padStart(2, "0");
+      var timeStr =
+        d.duty_t1 && d.duty_t2
+          ? d.duty_t1 + " – " + d.duty_t2
+          : s.t1 + " – " + s.t2;
+      dataRows.push([
+        bn,
+        d.date,
+        t?.name || "Unknown",
+        d.role,
+        timeStr,
+        d.hours + " hrs",
+      ]);
+      tc++;
+    });
+    doc.autoTable({
+      startY: cy,
+      head: [["Block No", "Date", "Staff Name", "Role", "Time", "Hours"]],
+      body: dataRows,
+      theme: "grid",
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: {
+        fillColor: [71, 120, 197],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 16, halign: "center" },
+        1: { cellWidth: 24, halign: "center" },
+        2: { cellWidth: 58 },
+        3: { cellWidth: 38 },
+        4: { cellWidth: 28, halign: "center" },
+        5: { cellWidth: 18, halign: "center" },
+      },
+      didDrawPage: function () {
+        doc.setDrawColor(200);
+        doc.line(14, ph - 15, pw - 14, ph - 15);
+        doc.setFontSize(9);
+        doc.text("Page " + doc.internal.getNumberOfPages(), pw - 25, ph - 8);
+      },
+    });
+    cy = doc.lastAutoTable.finalY + 8;
+    if (cy > ph - 40 && date !== sd[sd.length - 1]) {
+      doc.addPage();
+      cy = 15;
+    }
+  });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Total Duty Records: " + tc, pw - 14, cy + 4, { align: "right" });
+  doc.save("Duty_Records.pdf");
+}
+
+/* ============================================================
+   PDF 2 — PAYMENT BILL
+   ============================================================ */
+function downloadBillPDF(sessionIndex) {
+  var idx = sessionIndex != null ? sessionIndex : currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var doc = new window.jspdf.jsPDF();
+  var pw = doc.internal.pageSize.getWidth(),
+    ph = doc.internal.pageSize.getHeight();
+  var ay = getAcademicYear(s.d1);
+  var y =
+    addPdfHeader(doc, "EXAM REMUNERATION BILL (SUMMARY FOR PAYMENT)", s, ay) -
+    15;
+  var fd = duties.filter(function (d) {
+    return String(d.session_id) === String(s.id);
+  });
+  var sum = {},
+    gt = 0;
+  fd.forEach(function (d) {
+    var t = teachers.find(function (t) {
+      return String(t.id) === String(d.teacher_id);
+    });
+    var name = t?.name || "Unknown",
+      key = name + "||" + d.role;
+    if (!sum[key])
+      sum[key] = {
+        teacher: name,
+        role: d.role,
+        duties: 0,
+        rate: parseFloat(d.rate) || parseFloat(d.amount) || 0,
+        total: 0,
+      };
+    sum[key].duties++;
+    sum[key].total += parseFloat(d.amount) || 0;
+  });
+  var rows = Object.values(sum).sort(function (a, b) {
+    return a.teacher.localeCompare(b.teacher);
+  });
+  var sr = 1;
+  var tb = rows.map(function (r) {
+    gt += r.total;
+    return [sr++, r.teacher, r.role, r.duties, "Rs " + r.rate, "Rs " + r.total];
+  });
+  tb.push([
+    {
+      content: "GRAND TOTAL",
+      colSpan: 5,
+      styles: {
+        fontStyle: "bold",
+        halign: "right",
+        fillColor: [240, 240, 240],
+      },
+    },
+    {
+      content: "Rs " + gt,
+      styles: { fontStyle: "bold", fillColor: [240, 240, 240] },
+    },
+  ]);
+  doc.autoTable({
+    startY: y + 50,
+    head: [
+      [
+        "#",
+        "Staff Name",
+        "Role",
+        "No. of Duties",
+        "Rate / Duty",
+        "Total Amount",
+      ],
+    ],
+    body: tb,
+    theme: "grid",
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 10, halign: "center" },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 26, halign: "center" },
+      4: { cellWidth: 26, halign: "right" },
+      5: { cellWidth: 30, halign: "right" },
+    },
+    didDrawPage: function () {
+      doc.setDrawColor(200);
+      doc.line(14, ph - 15, pw - 14, ph - 15);
+      doc.setFontSize(9);
+      doc.text("Page " + doc.internal.getNumberOfPages(), pw - 25, ph - 8);
+    },
+  });
+  var fy = doc.lastAutoTable.finalY + 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(
+    "Total Teachers: " + rows.length + "     Total Duties: " + fd.length,
+    14,
+    fy,
+  );
+  doc.save("Payment_Bill.pdf");
+}
+
+/* ============================================================
+   EXCEL — PAYMENT BILL
+   ============================================================ */
+function downloadBillXLSX() {
+  var idx = currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var ay = getAcademicYear(s.d1);
+  var fd = duties.filter(function (d) {
+    return String(d.session_id) === String(s.id);
+  });
+  if (!fd.length) {
+    alert("No duty records for this session.");
+    return;
+  }
+  var sum = {},
+    gt = 0;
+  fd.forEach(function (d) {
+    var t = teachers.find(function (t) {
+      return String(t.id) === String(d.teacher_id);
+    });
+    var name = t?.name || "Unknown",
+      key = name + "||" + d.role;
+    if (!sum[key])
+      sum[key] = {
+        teacher: name,
+        role: d.role,
+        duties: 0,
+        rate: parseFloat(d.rate) || 0,
+        total: 0,
+      };
+    sum[key].duties++;
+    sum[key].total += parseFloat(d.amount) || 0;
+  });
+  var dataRows = Object.values(sum).sort(function (a, b) {
+    return a.teacher.localeCompare(b.teacher);
+  });
+  dataRows.forEach(function (r) {
+    gt += r.total;
+  });
+
+  var C = {
+    teal: "FF1B7A8B",
+    tealDark: "FF145F6D",
+    white: "FFFFFFFF",
+    offWhite: "FFF8FAFB",
+    headBg: "FF166534",
+    headFg: "FFFFFFFF",
+    totalBg: "FF1B7A8B",
+    totalFg: "FFFFFFFF",
+    infoBg: "FFF0FDFA",
+    infoBorder: "FF99E6D8",
+    borderCol: "FFBFD7DC",
+    labelFg: "FF374151",
+    valueFg: "FF0F3F4A",
+    altRow: "FFEFF9FA",
+    footerBg: "FFF1F5F9",
+  };
+  function border(style, color) {
+    return { style: style || "thin", color: { rgb: color || C.borderCol } };
+  }
+  function fullBorder(style, color) {
+    var b = border(style, color);
+    return { top: b, bottom: b, left: b, right: b };
+  }
+  function font(opts) {
+    return Object.assign(
+      { name: "Arial", sz: 10, color: { rgb: "FF000000" } },
+      opts || {},
+    );
+  }
+  function fill(rgb) {
+    return { patternType: "solid", fgColor: { rgb: rgb } };
+  }
+  function align(h, v, wrap) {
+    return {
+      horizontal: h || "left",
+      vertical: v || "center",
+      wrapText: !!wrap,
+    };
+  }
+  function st(fontOpts, fillRgb, alignOpts, borderOpts) {
+    var s = {};
+    s.font = font(fontOpts);
+    if (fillRgb) s.fill = fill(fillRgb);
+    if (alignOpts) s.alignment = alignOpts;
+    if (borderOpts) s.border = borderOpts;
+    return s;
+  }
+  var STYLE = {
+    infoLabel: st(
+      { sz: 10, bold: true, color: { rgb: C.valueFg } },
+      C.infoBg,
+      align("left", "center"),
+      fullBorder("thin", C.infoBorder),
+    ),
+    infoValue: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("left", "center"),
+      fullBorder("thin", C.infoBorder),
+    ),
+    tblHead: st(
+      { sz: 10, bold: true, color: { rgb: C.headFg } },
+      C.headBg,
+      align("center", "center"),
+      fullBorder("medium", "FF0D4A24"),
+    ),
+    tblHeadLeft: st(
+      { sz: 10, bold: true, color: { rgb: C.headFg } },
+      C.headBg,
+      align("left", "center"),
+      fullBorder("medium", "FF0D4A24"),
+    ),
+    dataCenter: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("center", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataLeft: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("left", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataRight: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("right", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltCenter: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("center", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltLeft: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("left", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltRight: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("right", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    gtLabel: st(
+      { sz: 10, bold: true, color: { rgb: C.totalFg } },
+      C.totalBg,
+      align("right", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    gtValue: st(
+      { sz: 10, bold: true, color: { rgb: C.totalFg } },
+      C.totalBg,
+      align("right", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    footerText: st(
+      { sz: 9, italic: true, color: { rgb: "FF64748B" } },
+      C.footerBg,
+      align("left", "center"),
+      null,
+    ),
+    blankGray: st({ sz: 10 }, C.offWhite, null, null),
+    dateHeader: st(
+      { sz: 10, bold: true, color: { rgb: "FFFFFFFF" } },
+      C.headBg,
+      align("left", "center"),
+      fullBorder("medium", "FF0D4A24"),
+    ),
+  };
+
+  // ── SHEET 1: DUTY RECORDS (date-grouped, per-peon row) ──
+  var ws1 = {},
+    merges1 = [],
+    maxR1 = 0;
+  var LAST_DR = 5; // SR No | Date | Teacher Name | Role | Time | Amount
+  function setCell1(r, c, value, style, numFmt) {
+    var addr = XLSX.utils.encode_cell({ r: r, c: c });
+    ws1[addr] = {
+      v: value === null || value === undefined ? "" : value,
+      t: typeof value === "number" ? "n" : "s",
+      s: style || {},
+    };
+    if (numFmt) ws1[addr].z = numFmt;
+    if (r > maxR1) maxR1 = r;
+  }
+  function mergeRow1(r, c1, c2, value, style) {
+    setCell1(r, c1, value, style);
+    for (var c = c1 + 1; c <= c2; c++) setCell1(r, c, "", style);
+    merges1.push({ s: { r: r, c: c1 }, e: { r: r, c: c2 } });
+  }
+  // Info header rows (same college/session info)
+  var infoItems1 = [
+    ["COLLEGE NAME 1", "Vivekanand Education Society's"],
+    ["COLLEGE NAME 2", "College of Arts, Science & Commerce (Autonomous)"],
+    ["Academic Year", ay],
+    ["Term", s.term],
+    ["Exam Type", s.etype],
+    ["Semester", "Sem " + s.sem],
+    ["Exam Period", s.d1 + "  \u2192  " + s.d2],
+    ["Exam Time", s.t1 + "  \u2013  " + s.t2],
+  ];
+  infoItems1.forEach(function (item, i) {
+    if (item[0] === "COLLEGE NAME 1") {
+      mergeRow1(
+        i,
+        0,
+        LAST_DR,
+        item[1],
+        st(
+          { sz: 11, italic: true, bold: false, color: { rgb: "FF374151" } },
+          "FFFFFDE7",
+          align("center", "center"),
+          fullBorder("thin", "FFDDCB8A"),
+        ),
+      );
+    } else if (item[0] === "COLLEGE NAME 2") {
+      mergeRow1(
+        i,
+        0,
+        LAST_DR,
+        item[1],
+        st(
+          { sz: 12, bold: true, color: { rgb: "FF1B4F72" } },
+          "FFE8F4FD",
+          align("center", "center"),
+          fullBorder("medium", "FF0D4A24"),
+        ),
+      );
+    } else {
+      setCell1(i, 0, item[0], STYLE.infoLabel);
+      setCell1(i, 1, item[1], STYLE.infoValue);
+      for (var c = 2; c <= LAST_DR; c++) setCell1(i, c, "", STYLE.infoValue);
+      merges1.push({ s: { r: i, c: 1 }, e: { r: i, c: LAST_DR } });
+    }
+  });
+  for (var c = 0; c <= LAST_DR; c++) setCell1(8, c, "", STYLE.blankGray);
+  // Column headers
+  ["SR No", "Date", "Teacher Name", "Role", "Time", "Amount"].forEach(
+    function (h, c) {
+      setCell1(9, c, h, c <= 2 ? STYLE.tblHeadLeft : STYLE.tblHead);
+    },
+  );
+  // Sort duties by date, then render date-grouped rows
+  var sortedFd = fd.slice().sort(function (a, b) {
+    return (a.date || "").localeCompare(b.date || "");
+  });
+  var dg1 = {};
+  sortedFd.forEach(function (d) {
+    if (!dg1[d.date]) dg1[d.date] = [];
+    dg1[d.date].push(d);
+  });
+  var row1 = 10,
+    drSr = 0;
+  Object.keys(dg1)
+    .sort()
+    .forEach(function (date) {
+      var dn = new Date(date).toLocaleDateString("en-IN", { weekday: "long" });
+      mergeRow1(row1, 0, LAST_DR, date + "  (" + dn + ")", STYLE.dateHeader);
+      row1++;
+      dg1[date].forEach(function (d, i) {
+        var t = teachers.find(function (t) {
+          return String(t.id) === String(d.teacher_id);
+        });
+        var timeStr =
+          d.duty_t1 && d.duty_t2
+            ? d.duty_t1 + " \u2013 " + d.duty_t2
+            : (s.t1 || "") + " \u2013 " + (s.t2 || "");
+        var alt = i % 2 === 1;
+        drSr++;
+        setCell1(
+          row1,
+          0,
+          drSr,
+          alt ? STYLE.dataAltCenter : STYLE.dataCenter,
+          "0",
+        );
+        setCell1(
+          row1,
+          1,
+          d.date || "",
+          alt ? STYLE.dataAltCenter : STYLE.dataCenter,
+        );
+        setCell1(
+          row1,
+          2,
+          t?.name || "Unknown",
+          alt ? STYLE.dataAltLeft : STYLE.dataLeft,
+        );
+        setCell1(
+          row1,
+          3,
+          d.role || "",
+          alt ? STYLE.dataAltLeft : STYLE.dataLeft,
+        );
+        setCell1(
+          row1,
+          4,
+          timeStr,
+          alt ? STYLE.dataAltCenter : STYLE.dataCenter,
+        );
+        setCell1(
+          row1,
+          5,
+          parseFloat(d.amount) || 0,
+          alt ? STYLE.dataAltRight : STYLE.dataRight,
+          '"\u20B9 "# ##0',
+        );
+        row1++;
+      });
+      // Blank spacer between date groups
+      for (var c = 0; c <= LAST_DR; c++) setCell1(row1, c, "", STYLE.blankGray);
+      row1++;
+    });
+  ws1["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: maxR1, c: LAST_DR },
+  });
+  ws1["!merges"] = merges1;
+  ws1["!cols"] = [
+    { wch: 8 }, // SR No
+    { wch: 14 }, // Date
+    { wch: 30 }, // Teacher Name
+    { wch: 22 }, // Role
+    { wch: 18 }, // Time
+    { wch: 16 }, // Amount
+  ];
+
+  // ── SHEET 2: PAYMENT BILL (grouped summary — existing logic) ──
+  var ws = {},
+    merges = [],
+    maxR = 0,
+    LAST = 5;
+  function setCell(r, c, value, style, numFmt) {
+    var addr = XLSX.utils.encode_cell({ r: r, c: c });
+    var type = "s";
+    if (typeof value === "number") type = "n";
+    else if (value === null || value === undefined || value === "") value = "";
+    ws[addr] = { v: value, t: type, s: style || {} };
+    if (numFmt) ws[addr].z = numFmt;
+    if (r > maxR) maxR = r;
+  }
+  function mergeRow(r, c1, c2, value, style, numFmt) {
+    setCell(r, c1, value, style, numFmt);
+    for (var c = c1 + 1; c <= c2; c++) setCell(r, c, "", style);
+    merges.push({ s: { r: r, c: c1 }, e: { r: r, c: c2 } });
+  }
+
+  var infoItems = [
+    ["COLLEGE NAME 1", "Vivekanand Education Society's"],
+    ["COLLEGE NAME 2", "College of Arts, Science & Commerce (Autonomous)"],
+    ["Academic Year", ay],
+    ["Term", s.term],
+    ["Exam Type", s.etype],
+    ["Semester", "Sem " + s.sem],
+    ["Exam Period", s.d1 + "  →  " + s.d2],
+    ["Exam Time", s.t1 + "  –  " + s.t2],
+  ];
+  infoItems.forEach(function (item, i) {
+    if (item[0] === "COLLEGE NAME 1") {
+      mergeRow(
+        i,
+        0,
+        LAST,
+        item[1],
+        st(
+          { sz: 11, italic: true, bold: false, color: { rgb: "FF374151" } },
+          "FFFFFDE7",
+          align("center", "center"),
+          fullBorder("thin", "FFDDCB8A"),
+        ),
+      );
+    } else if (item[0] === "COLLEGE NAME 2") {
+      mergeRow(
+        i,
+        0,
+        LAST,
+        item[1],
+        st(
+          { sz: 12, bold: true, color: { rgb: "FF1B4F72" } },
+          "FFE8F4FD",
+          align("center", "center"),
+          fullBorder("medium", "FF1B7A8B"),
+        ),
+      );
+    } else {
+      setCell(i, 0, item[0], STYLE.infoLabel);
+      setCell(i, 1, item[1], STYLE.infoValue);
+      for (var c = 2; c <= LAST; c++) setCell(i, c, "", STYLE.infoValue);
+      merges.push({ s: { r: i, c: 1 }, e: { r: i, c: LAST } });
+    }
+  });
+  for (var c = 0; c <= LAST; c++) setCell(8, c, "", STYLE.blankGray);
+  [
+    "#",
+    "Staff Name",
+    "Role",
+    "No. of Duties",
+    "Rate / Duty",
+    "Total Amount",
+  ].forEach(function (h, c) {
+    setCell(
+      9,
+      c,
+      h,
+      c <= 1 ? STYLE.tblHeadLeft : c === 2 ? STYLE.tblHeadLeft : STYLE.tblHead,
+    );
+  });
+  var dataStartR = 10;
+  dataRows.forEach(function (r, i) {
+    var row = dataStartR + i,
+      alt = i % 2 === 1;
+    var dC = alt ? STYLE.dataAltCenter : STYLE.dataCenter;
+    var dL = alt ? STYLE.dataAltLeft : STYLE.dataLeft;
+    var dR = alt ? STYLE.dataAltRight : STYLE.dataRight;
+    setCell(row, 0, i + 1, dC, "0");
+    setCell(row, 1, r.teacher, dL);
+    setCell(row, 2, r.role, dL);
+    setCell(row, 3, r.duties, dC, "0");
+    setCell(row, 4, r.rate, dR, '"Rs "# ##0');
+    setCell(row, 5, r.total, dR, '"Rs "# ##0');
+  });
+  var gtRow = dataStartR + dataRows.length;
+  mergeRow(gtRow, 0, 4, "GRAND TOTAL", STYLE.gtLabel);
+  setCell(gtRow, 5, gt, STYLE.gtValue, '"Rs "# ##0');
+  for (var c = 0; c <= LAST; c++) setCell(gtRow + 1, c, "", STYLE.blankGray);
+  var summaryR = gtRow + 2;
+  mergeRow(
+    summaryR,
+    0,
+    LAST,
+    "Total Teachers: " +
+      dataRows.length +
+      "     |     Total Duty Records: " +
+      fd.length +
+      "     |     Total Payable: Rs " +
+      gt,
+    STYLE.footerText,
+  );
+  ws["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: maxR, c: LAST },
+  });
+  ws["!merges"] = merges;
+  ws["!cols"] = [
+    { wch: 6 },
+    { wch: 30 },
+    { wch: 22 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 18 },
+  ];
+  var rh = [];
+  for (var i = 0; i <= 7; i++) rh[i] = { hpt: 20 };
+  rh[0] = { hpt: 18 };
+  rh[1] = { hpt: 22 };
+  rh[8] = { hpt: 8 };
+  rh[9] = { hpt: 20 };
+  for (var i = dataStartR; i <= gtRow; i++) rh[i] = { hpt: 18 };
+  ws["!rows"] = rh;
+
+  var WB = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(WB, ws1, "Duty Records");
+  XLSX.utils.book_append_sheet(WB, ws, "Bill Summary");
+
+  var fileName =
+    "Teacher_Duty_Report_" +
+    s.term.replace(/ /g, "_") +
+    "_" +
+    s.etype +
+    "_Sem" +
+    s.sem +
+    "_" +
+    ay +
+    ".xlsx";
+  XLSX.writeFile(WB, fileName);
+  showToast("Excel downloaded ✓");
+}
+
+/* ============================================================
+   PDF 3 — PEON DUTY RECORDS (date-grouped, same style as teacher)
+   ============================================================ */
+function downloadPeonRecordsPDF(sessionIndex) {
+  var idx = sessionIndex != null ? sessionIndex : currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var doc = new window.jspdf.jsPDF();
+  var pw = doc.internal.pageSize.getWidth(),
+    ph = doc.internal.pageSize.getHeight();
+  var ay = getAcademicYear(s.d1);
+  var y = addPdfHeader(doc, "EXAM REMUNERATION BILL (DATEWISE)", s, ay);
+  var fd = peonDuties
+    .filter(function (d) {
+      return String(d.session_id) === String(s.id);
+    })
+    .sort(function (a, b) {
+      return a.date.localeCompare(b.date);
+    });
+  if (!fd.length) {
+    doc.text("No peon duty records.", 14, y + 10);
+    doc.save("Peon_Duty_Records.pdf");
+    return;
+  }
+  var dg = {};
+  fd.forEach(function (d) {
+    if (!dg[d.date]) dg[d.date] = [];
+    dg[d.date].push(d);
+  });
+  var sd = Object.keys(dg).sort(),
+    cy = y + 8,
+    tc = 0;
+  sd.forEach(function (date) {
+    var dn = new Date(date).toLocaleDateString("en-IN", { weekday: "long" });
+    doc.autoTable({
+      startY: cy,
+      head: [],
+      body: [
+        [
+          {
+            content: date + "  (" + dn + ")",
+            colSpan: 5,
+            styles: {
+              fontStyle: "bold",
+              fillColor: [45, 159, 162],
+              textColor: 255,
+              fontSize: 10,
+              cellPadding: 4,
+              halign: "left",
+            },
+          },
+        ],
+      ],
+      theme: "plain",
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+    });
+    cy = doc.lastAutoTable.finalY;
+    var dataRows = [];
+    var srBase = tc; // running offset so SR numbers are global across date groups
+    dg[date].forEach(function (d) {
+      var p = peons.find(function (p) {
+        return String(p.id) === String(d.peon_id);
+      });
+      var timeStr =
+        d.duty_t1 && d.duty_t2
+          ? d.duty_t1 + " – " + d.duty_t2
+          : s.t1 + " – " + s.t2;
+      tc++;
+      dataRows.push([
+        tc, // SR No (sequential, global)
+        d.date,
+        p?.name || "Unknown",
+        d.role || "Peon",
+        timeStr,
+        "Rs " + d.amount, // ₹ using unicode to avoid encoding issues
+      ]);
+    });
+    doc.autoTable({
+      startY: cy,
+      head: [["SR No", "Date", "Staff Name", "Role", "Time", "Amount"]],
+      body: dataRows,
+      theme: "grid",
+      margin: { left: 14, right: 14 },
+      tableWidth: 182,
+      styles: { fontSize: 9, cellPadding: 3 },
+      headStyles: {
+        fillColor: [45, 159, 162],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 14, halign: "center" }, // SR No — narrower
+        1: { cellWidth: 26, halign: "center" }, // Date
+        2: { cellWidth: 58 }, // Staff Name — a little wider
+        3: { cellWidth: 36 }, // Role
+        4: { cellWidth: 26, halign: "center" }, // Time
+        5: { cellWidth: 22, halign: "center" }, // Amount
+      },
+      didDrawPage: function () {
+        doc.setDrawColor(200);
+        doc.line(14, ph - 15, pw - 14, ph - 15);
+        doc.setFontSize(9);
+        doc.text("Page " + doc.internal.getNumberOfPages(), pw - 25, ph - 8);
+      },
+    });
+    cy = doc.lastAutoTable.finalY + 8;
+    if (cy > ph - 40 && date !== sd[sd.length - 1]) {
+      doc.addPage();
+      cy = 15;
+    }
+  });
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("Total Peon Duty Records: " + tc, pw - 14, cy + 4, {
+    align: "right",
+  });
+  doc.save("Peon_Duty_Records.pdf");
+}
+
+/* ============================================================
+   PDF 4 — PEON PAYMENT BILL
+   ============================================================ */
+function downloadPeonBillPDF(sessionIndex) {
+  var idx = sessionIndex != null ? sessionIndex : currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var doc = new window.jspdf.jsPDF();
+  var pw = doc.internal.pageSize.getWidth(),
+    ph = doc.internal.pageSize.getHeight();
+  var ay = getAcademicYear(s.d1);
+  var y =
+    addPdfHeader(
+      doc,
+      "EXAM REMUNERATION BILL (SUMMARY FOR PAYMENT)",
+      s,
+      ay,
+    ) - 15;
+  var fd = peonDuties.filter(function (d) {
+    return String(d.session_id) === String(s.id);
+  });
+  var sum = {},
+    gt = 0;
+  fd.forEach(function (d) {
+    var p = peons.find(function (p) {
+      return String(p.id) === String(d.peon_id);
+    });
+    var name = p?.name || "Unknown";
+    if (!sum[name]) sum[name] = { name: name, distribute: 0, total: 0 };
+    sum[name].distribute += parseFloat(d.amount) || 0;
+    sum[name].total += parseFloat(d.amount) || 0;
+  });
+  var rows = Object.values(sum).sort(function (a, b) {
+    return a.name.localeCompare(b.name);
+  });
+  var sr = 1;
+  var tb = rows.map(function (r) {
+    gt += r.total;
+    return [sr++, r.name, r.distribute, r.total];
+  });
+  // Grand total row
+  tb.push([
+    {
+      content: "Grand Total",
+      colSpan: 2,
+      styles: {
+        fontStyle: "bold",
+        halign: "right",
+        fillColor: [240, 253, 250],
+      },
+    },
+    {
+      content: gt,
+      styles: {
+        fontStyle: "bold",
+        fillColor: [240, 253, 250],
+        halign: "right",
+      },
+    },
+    {
+      content: gt,
+      styles: {
+        fontStyle: "bold",
+        fillColor: [240, 253, 250],
+        halign: "right",
+      },
+    },
+  ]);
+  doc.autoTable({
+    startY: y + 50,
+    head: [["#", "Staff Name", "Distribute (Rs)", "Total (Rs)"]],
+    body: tb,
+    theme: "grid",
+    styles: { fontSize: 10, cellPadding: 3 },
+    headStyles: {
+      fillColor: [45, 159, 162],
+      textColor: 255,
+      fontStyle: "bold",
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: "center" },
+      1: {},
+      2: { cellWidth: 36, halign: "right" },
+      3: { cellWidth: 36, halign: "right" },
+    },
+    didDrawPage: function () {
+      doc.setDrawColor(200);
+      doc.line(14, ph - 15, pw - 14, ph - 15);
+      doc.setFontSize(9);
+      doc.text("Page " + doc.internal.getNumberOfPages(), pw - 25, ph - 8);
+    },
+  });
+  var fy = doc.lastAutoTable.finalY + 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text(
+    "Total Peons: " + rows.length + "     Grand Total: Rs " + gt,
+    14,
+    fy,
+  );
+  doc.save("Peon_Payment_Bill.pdf");
+}
+
+/* ============================================================
+   EXCEL — PEON PAYMENT BILL (Duty Records sheet + Bill sheet)
+   ============================================================ */
+function downloadPeonBillXLSX() {
+  var idx = currentSessionIndex;
+  var s = sessions[idx];
+  if (!s) {
+    alert("No session selected");
+    return;
+  }
+  var ay = getAcademicYear(s.d1);
+  var fd = peonDuties.filter(function (d) {
+    return String(d.session_id) === String(s.id);
+  });
+  if (!fd.length) {
+    alert("No peon duty records for this session.");
+    return;
+  }
+
+  var C = {
+    teal: "FF1B7A8B",
+    tealDark: "FF0A5868",
+    white: "FFFFFFFF",
+    offWhite: "FFF8FAFB",
+    headBg: "FF2D9FA2",
+    headFg: "FFFFFFFF",
+    totalBg: "FF1B7A8B",
+    totalFg: "FFFFFFFF",
+    infoBg: "FFF0FDFA",
+    infoBorder: "FF99E6D8",
+    borderCol: "FFBFD7DC",
+    labelFg: "FF374151",
+    valueFg: "FF0F3F4A",
+    altRow: "FFEFF9FA",
+    footerBg: "FFF1F5F9",
+  };
+  function border(style, color) {
+    return { style: style || "thin", color: { rgb: color || C.borderCol } };
+  }
+  function fullBorder(style, color) {
+    var b = border(style, color);
+    return { top: b, bottom: b, left: b, right: b };
+  }
+  function font(opts) {
+    return Object.assign(
+      { name: "Arial", sz: 10, color: { rgb: "FF000000" } },
+      opts || {},
+    );
+  }
+  function fill(rgb) {
+    return { patternType: "solid", fgColor: { rgb: rgb } };
+  }
+  function align(h, v, wrap) {
+    return {
+      horizontal: h || "left",
+      vertical: v || "center",
+      wrapText: !!wrap,
+    };
+  }
+  function st(fontOpts, fillRgb, alignOpts, borderOpts) {
+    var s2 = {};
+    s2.font = font(fontOpts);
+    if (fillRgb) s2.fill = fill(fillRgb);
+    if (alignOpts) s2.alignment = alignOpts;
+    if (borderOpts) s2.border = borderOpts;
+    return s2;
+  }
+  var STYLE = {
+    infoLabel: st(
+      { sz: 10, bold: true, color: { rgb: C.valueFg } },
+      C.infoBg,
+      align("left", "center"),
+      fullBorder("thin", C.infoBorder),
+    ),
+    infoValue: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("left", "center"),
+      fullBorder("thin", C.infoBorder),
+    ),
+    tblHead: st(
+      { sz: 10, bold: true, color: { rgb: C.headFg } },
+      C.headBg,
+      align("center", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    tblHeadLeft: st(
+      { sz: 10, bold: true, color: { rgb: C.headFg } },
+      C.headBg,
+      align("left", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    dataCenter: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("center", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataLeft: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("left", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataRight: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.white,
+      align("right", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltCenter: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("center", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltLeft: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("left", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    dataAltRight: st(
+      { sz: 10, color: { rgb: C.labelFg } },
+      C.altRow,
+      align("right", "center"),
+      fullBorder("thin", C.borderCol),
+    ),
+    gtLabel: st(
+      { sz: 10, bold: true, color: { rgb: C.totalFg } },
+      C.totalBg,
+      align("right", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    gtValue: st(
+      { sz: 10, bold: true, color: { rgb: C.totalFg } },
+      C.totalBg,
+      align("right", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+    footerText: st(
+      { sz: 9, italic: true, color: { rgb: "FF64748B" } },
+      C.footerBg,
+      align("left", "center"),
+      null,
+    ),
+    blankGray: st({ sz: 10 }, C.offWhite, null, null),
+    dateHeader: st(
+      { sz: 10, bold: true, color: { rgb: "FFFFFFFF" } },
+      C.headBg,
+      align("left", "center"),
+      fullBorder("medium", C.tealDark),
+    ),
+  };
+
+  // ── SHEET 1: DUTY RECORDS (date-grouped) ──
+  var ws1 = {},
+    merges1 = [],
+    maxR1 = 0;
+  var LAST_DR = 5; // columns 0-5: SR No, Date, Staff, Role, Time, Amount
+  function setCell1(r, c, value, style, numFmt) {
+    var addr = XLSX.utils.encode_cell({ r: r, c: c });
+    ws1[addr] = {
+      v: value === null || value === undefined ? "" : value,
+      t: typeof value === "number" ? "n" : "s",
+      s: style || {},
+    };
+    if (numFmt) ws1[addr].z = numFmt;
+    if (r > maxR1) maxR1 = r;
+  }
+  function mergeRow1(r, c1, c2, value, style) {
+    setCell1(r, c1, value, style);
+    for (var c = c1 + 1; c <= c2; c++) setCell1(r, c, "", style);
+    merges1.push({ s: { r: r, c: c1 }, e: { r: r, c: c2 } });
+  }
+  // Info header
+  var infoItems = [
+    ["COLLEGE NAME 1", "Vivekanand Education Society's"],
+    ["COLLEGE NAME 2", "College of Arts, Science & Commerce (Autonomous)"],
+    ["Academic Year", ay],
+    ["Term", s.term],
+    ["Exam Type", s.etype],
+    ["Semester", "Sem " + s.sem],
+    ["Exam Period", s.d1 + "  →  " + s.d2],
+    ["Exam Time", s.t1 + "  –  " + s.t2],
+  ];
+  infoItems.forEach(function (item, i) {
+    if (item[0] === "COLLEGE NAME 1") {
+      mergeRow1(
+        i,
+        0,
+        LAST_DR,
+        item[1],
+        st(
+          { sz: 11, italic: true, bold: false, color: { rgb: "FF374151" } },
+          "FFFFFDE7",
+          align("center", "center"),
+          fullBorder("thin", "FFDDCB8A"),
+        ),
+      );
+    } else if (item[0] === "COLLEGE NAME 2") {
+      mergeRow1(
+        i,
+        0,
+        LAST_DR,
+        item[1],
+        st(
+          { sz: 12, bold: true, color: { rgb: "FF1B4F72" } },
+          "FFE8F4FD",
+          align("center", "center"),
+          fullBorder("medium", "FF1B7A8B"),
+        ),
+      );
+    } else {
+      setCell1(i, 0, item[0], STYLE.infoLabel);
+      setCell1(i, 1, item[1], STYLE.infoValue);
+      for (var c = 2; c <= LAST_DR; c++) setCell1(i, c, "", STYLE.infoValue);
+      merges1.push({ s: { r: i, c: 1 }, e: { r: i, c: LAST_DR } });
+    }
+  });
+  for (var c = 0; c <= LAST_DR; c++) setCell1(6, c, "", STYLE.blankGray);
+  // Column headers
+  for (var c = 0; c <= LAST_DR; c++) setCell1(8, c, "", STYLE.blankGray);
+  ["SR No", "Date", "Staff Name", "Role", "Time", "Amount (₹)"].forEach(
+    function (h, c) {
+      setCell1(
+        9,
+        c,
+        h,
+        c === 0 || c === 1 || c === 2 ? STYLE.tblHeadLeft : STYLE.tblHead,
+      );
+    },
+  );
+  // Sort by date
+  var sortedFd = [...fd].sort(function (a, b) {
+    return a.date.localeCompare(b.date);
+  });
+  var dg = {};
+  sortedFd.forEach(function (d) {
+    if (!dg[d.date]) dg[d.date] = [];
+    dg[d.date].push(d);
+  });
+  var row1 = 10,
+    xlsxSr = 0;
+  Object.keys(dg)
+    .sort()
+    .forEach(function (date) {
+      // Date header row
+      var dn = new Date(date).toLocaleDateString("en-IN", { weekday: "long" });
+      mergeRow1(row1, 0, LAST_DR, date + "  (" + dn + ")", STYLE.dateHeader);
+      row1++;
+      dg[date].forEach(function (d, i) {
+        var p = peons.find(function (p) {
+          return String(p.id) === String(d.peon_id);
+        });
+        xlsxSr++;
+        var timeStr =
+          d.duty_t1 && d.duty_t2
+            ? d.duty_t1 + " – " + d.duty_t2
+            : s.t1 + " – " + s.t2;
+        var alt = i % 2 === 1;
+        setCell1(row1, 0, xlsxSr, alt ? STYLE.dataAltCenter : STYLE.dataCenter);
+        setCell1(row1, 1, d.date, alt ? STYLE.dataAltCenter : STYLE.dataCenter);
+        setCell1(
+          row1,
+          2,
+          p?.name || "Unknown",
+          alt ? STYLE.dataAltLeft : STYLE.dataLeft,
+        );
+        setCell1(
+          row1,
+          3,
+          d.role || "Peon",
+          alt ? STYLE.dataAltLeft : STYLE.dataLeft,
+        );
+        setCell1(
+          row1,
+          4,
+          timeStr,
+          alt ? STYLE.dataAltCenter : STYLE.dataCenter,
+        );
+        setCell1(
+          row1,
+          5,
+          parseFloat(d.amount) || 0,
+          alt ? STYLE.dataAltRight : STYLE.dataRight,
+          '"₹ "# ##0',
+        );
+        row1++;
+      });
+      // Blank spacer
+      for (var c = 0; c <= LAST_DR; c++) setCell1(row1, c, "", STYLE.blankGray);
+      row1++;
+    });
+  ws1["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: maxR1, c: LAST_DR },
+  });
+  ws1["!merges"] = merges1;
+  ws1["!cols"] = [
+    { wch: 8 }, // SR No
+    { wch: 14 }, // Date
+    { wch: 28 }, // Staff Name
+    { wch: 20 }, // Role
+    { wch: 18 }, // Time
+    { wch: 14 }, // Amount
+  ];
+
+  // ── SHEET 2: PAYMENT BILL ──
+  var sum = {},
+    gt = 0;
+  fd.forEach(function (d) {
+    var p = peons.find(function (p) {
+      return String(p.id) === String(d.peon_id);
+    });
+    var name = p?.name || "Unknown";
+    if (!sum[name]) sum[name] = { name: name, distribute: 0, total: 0 };
+    sum[name].distribute += parseFloat(d.amount) || 0;
+    sum[name].total += parseFloat(d.amount) || 0;
+  });
+  var billRows = Object.values(sum).sort(function (a, b) {
+    return a.name.localeCompare(b.name);
+  });
+  billRows.forEach(function (r) {
+    gt += r.total;
+  });
+  var ws2 = {},
+    merges2 = [],
+    maxR2 = 0,
+    LAST_B = 3;
+  function setCell2(r, c, value, style, numFmt) {
+    var addr = XLSX.utils.encode_cell({ r: r, c: c });
+    ws2[addr] = {
+      v: value === null || value === undefined ? "" : value,
+      t: typeof value === "number" ? "n" : "s",
+      s: style || {},
+    };
+    if (numFmt) ws2[addr].z = numFmt;
+    if (r > maxR2) maxR2 = r;
+  }
+  function mergeRow2(r, c1, c2, value, style, numFmt) {
+    setCell2(r, c1, value, style, numFmt);
+    for (var c = c1 + 1; c <= c2; c++) setCell2(r, c, "", style);
+    merges2.push({ s: { r: r, c: c1 }, e: { r: r, c: c2 } });
+  }
+  infoItems.forEach(function (item, i) {
+    if (item[0] === "COLLEGE NAME 1") {
+      mergeRow2(
+        i,
+        0,
+        LAST_B,
+        item[1],
+        st(
+          { sz: 11, italic: true, bold: false, color: { rgb: "FF374151" } },
+          "FFFFFDE7",
+          align("center", "center"),
+          fullBorder("thin", "FFDDCB8A"),
+        ),
+      );
+    } else if (item[0] === "COLLEGE NAME 2") {
+      mergeRow2(
+        i,
+        0,
+        LAST_B,
+        item[1],
+        st(
+          { sz: 12, bold: true, color: { rgb: "FF1B4F72" } },
+          "FFE8F4FD",
+          align("center", "center"),
+          fullBorder("medium", "FF1B7A8B"),
+        ),
+      );
+    } else {
+      setCell2(i, 0, item[0], STYLE.infoLabel);
+      setCell2(i, 1, item[1], STYLE.infoValue);
+      for (var c = 2; c <= LAST_B; c++) setCell2(i, c, "", STYLE.infoValue);
+      merges2.push({ s: { r: i, c: 1 }, e: { r: i, c: LAST_B } });
+    }
+  });
+  for (var c = 0; c <= LAST_B; c++) setCell2(8, c, "", STYLE.blankGray);
+  ["#", "Staff Name", "Distribute (₹)", "Total (₹)"].forEach(function (h, c) {
+    setCell2(9, c, h, c <= 1 ? STYLE.tblHeadLeft : STYLE.tblHead);
+  });
+  var billStartR = 10;
+  billRows.forEach(function (r, i) {
+    var row = billStartR + i,
+      alt = i % 2 === 1;
+    var dC = alt ? STYLE.dataAltCenter : STYLE.dataCenter;
+    var dL = alt ? STYLE.dataAltLeft : STYLE.dataLeft;
+    var dR = alt ? STYLE.dataAltRight : STYLE.dataRight;
+    setCell2(row, 0, i + 1, dC, "0");
+    setCell2(row, 1, r.name, dL);
+    setCell2(row, 2, r.distribute, dR, '"₹ "# ##0');
+    setCell2(row, 3, r.total, dR, '"₹ "# ##0');
+  });
+  var gtRow2 = billStartR + billRows.length;
+  mergeRow2(gtRow2, 0, 1, "Grand Total", STYLE.gtLabel);
+  setCell2(gtRow2, 2, gt, STYLE.gtValue, '"₹ "# ##0');
+  setCell2(gtRow2, 3, gt, STYLE.gtValue, '"₹ "# ##0');
+  for (var c = 0; c <= LAST_B; c++)
+    setCell2(gtRow2 + 1, c, "", STYLE.blankGray);
+  mergeRow2(
+    gtRow2 + 2,
+    0,
+    LAST_B,
+    "Total Peons: " +
+      billRows.length +
+      "     |     Total Duty Records: " +
+      fd.length +
+      "     |     Total Payable: ₹ " +
+      gt,
+    STYLE.footerText,
+  );
+  ws2["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: maxR2, c: LAST_B },
+  });
+  ws2["!merges"] = merges2;
+  ws2["!cols"] = [{ wch: 6 }, { wch: 32 }, { wch: 18 }, { wch: 18 }];
+
+  var WB = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(WB, ws1, "Peon Duty Records");
+  XLSX.utils.book_append_sheet(WB, ws2, "Peon Payment Bill");
+  var fileName =
+    "Peon_Bill_" +
+    s.term.replace(/ /g, "_") +
+    "_" +
+    s.etype +
+    "_Sem" +
+    s.sem +
+    "_" +
+    ay +
+    ".xlsx";
+  XLSX.writeFile(WB, fileName);
+  showToast("Peon Excel downloaded ✓");
+}
+
+var LOGO_B64 =
+  "data:image/png;base64,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";
+/* ============================================================
+   SHARED PDF HEADER HELPER
+   ============================================================ */
+function addPdfHeader(doc, titleText, s, ay) {
+  var pw = doc.internal.pageSize.getWidth();
+  var logoW = 18,
+    logoH = 20,
+    logoX = 10,
+    logoY = 10;
+  try {
+    doc.addImage(LOGO_B64, "PNG", logoX, logoY, logoW, logoH);
+  } catch (e) {}
+  var txtX = logoX + logoW + 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Vivekanand Education Society's", txtX, logoY + 5);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(11);
+  doc.setTextColor(30, 30, 30);
+  doc.text(
+    "College of Arts, Science & Commerce (Autonomous)",
+    txtX,
+    logoY + 12,
+  );
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(30, 64, 175);
+  doc.text(titleText, pw / 2, logoY + 23, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  var infoY = logoY + 30;
+  doc.text("Academic Year : " + ay, 14, infoY);
+  doc.text(
+    "Term : " +
+      s.term +
+      "   |   Exam Type : " +
+      s.etype +
+      "   |   Semester : " +
+      s.sem,
+    14,
+    infoY + 6,
+  );
+  doc.text(
+    "Exam Dates : " +
+      s.d1 +
+      "  to  " +
+      s.d2 +
+      "     Exam Time : " +
+      s.t1 +
+      " - " +
+      s.t2,
+    14,
+    infoY + 12,
+  );
+  doc.setLineWidth(0.5);
+  doc.line(10, infoY + 17, 200, infoY + 17);
+  return infoY + 25; // returns the y position where content should start
+}
+
+/* Excel header helper — adds logo + college name as first rows */
+function addXlsxHeader(ws, merges, setCell, LAST, ay, s, startRow) {
+  // We can't embed an image easily in xlsx-js-style, so we add text rows
+  // Row 0: College name (italic style handled via font)
+  // Already handled by infoItems in each function — we update infoItems instead
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+// ── Recalculate assigned total on rate input change ──────────
+document.addEventListener("input", function (e) {
+  if (e.target.classList.contains("peonRowRate")) {
+    updateAssignedTotal();
+  }
+});
+
+/* ============================================================
+   AUTH — Login / Logout
+   Full rewrite: fixes mobile touch, autofill timing,
+   users[] loading race, type="email" value mutation,
+   and inline onclick unreliability on mobile.
+   ============================================================ */
+
+// ── DOM refs cached once at boot ────────────────────────────
+var _loginBtn    = null;
+var _loginMail   = null;
+var _loginPass   = null;
+var _loginError  = null;
+var _loginStatus = null;
+
+// Called by applyRawResults() when users[] is freshly populated
+function _onUsersReady() {
+  if (!_loginBtn) return; // DOM not ready yet (rare edge case)
+  _loginBtn.disabled = false;
+  _loginBtn.style.opacity = "1";
+  _loginBtn.style.cursor  = "pointer";
+  _loginBtn.innerText = "Login";
+  if (_loginStatus) {
+    _loginStatus.textContent = "";
+  }
+  console.log("[auth] login button unlocked — " + users.length + " users ready");
+}
+
+function _showMainApp(mail, role) {
+  document.getElementById("loginPage").style.display   = "none";
+  document.getElementById("mainLayout").style.display  = "flex";
+  document.getElementById("userInfoBar").style.display = "flex";
+  document.getElementById("userMailLabel").innerText   = mail;
+  document.getElementById("userRoleBadge").innerText   = role;
+}
+
+/* ── doLogin ─────────────────────────────────────────────────
+   Safe to call from click, touchstart, or Enter keydown.
+   Reads values AFTER a 50ms microtask delay so mobile autofill
+   has time to commit the value before we read .value.
+*/
+function doLogin() {
+  // Debounce: ignore if already in progress
+  if (_loginBtn && _loginBtn.disabled) return;
+
+  setTimeout(function () {
+    // ── Read & normalise inputs ──────────────────────────────
+    var mail = (_loginMail ? _loginMail.value : "").trim().toLowerCase();
+    var pass = (_loginPass  ? _loginPass.value  : "").trim();
+
+    console.log("[login] attempt — mail='" + mail + "'  passLen=" + pass.length);
+
+    // Clear previous error
+    if (_loginError) { _loginError.style.display = "none"; _loginError.innerText = ""; }
+
+    // ── Validation ──────────────────────────────────────────
+    if (!mail) {
+      return _showLoginError("Please enter your email address");
+    }
+    if (!mail.endsWith("@ves.ac.in")) {
+      return _showLoginError("Use your official VES email (@ves.ac.in)");
+    }
+    if (!pass) {
+      return _showLoginError("Please enter your password");
+    }
+
+    // ── Guard: fetch not completed yet ──────────────────────────
+    if (!_usersReady) {
+      return _showLoginError("Still loading — please wait a moment and try again");
+    }
+
+    // ── Guard: users sheet is empty ──────────────────────────────
+    if (users.length === 0) {
+      return _showLoginError("No user accounts found. Please add users to the 'users' sheet in Google Sheets.");
+    }
+
+    // ── Lock button during check ─────────────────────────────
+    _loginBtn.disabled  = true;
+    _loginBtn.innerText = "Signing in…";
+    _loginBtn.style.opacity = "0.7";
+
+    // ── Match ────────────────────────────────────────────────
+    var matched = null;
+    for (var i = 0; i < users.length; i++) {
+      var u     = users[i];
+      var uMail = String(u.mail     || "").trim().toLowerCase();
+      var uPass = String(u.password || "").trim();
+      console.log("[login] checking row " + i + ": '" + uMail + "'");
+      if (uMail === mail && uPass === pass) {
+        matched = u;
+        break;
+      }
+    }
+
+    // ── Unlock button ────────────────────────────────────────
+    _loginBtn.disabled  = false;
+    _loginBtn.innerText = "Login";
+    _loginBtn.style.opacity = "1";
+
+    if (!matched) {
+      console.warn("[login] no match for '" + mail + "'");
+      return _showLoginError("Invalid email or password");
+    }
+
+    // ── Success ──────────────────────────────────────────────
+    console.log("[login] success — role=" + matched.role);
+    var sessionData = { mail: matched.mail, role: matched.role };
+    try { localStorage.setItem("loggedUser", JSON.stringify(sessionData)); } catch (_) {}
+    _showMainApp(matched.mail, matched.role);
+    showToast("Login successful ✓");
+
+  }, 50); // 50ms — lets mobile autofill finish writing before we read
+}
+
+function _showLoginError(msg) {
+  if (!_loginError) return;
+  _loginError.innerText     = msg;
+  _loginError.style.display = "block";
+  if (_loginBtn) {
+    _loginBtn.disabled  = false;
+    _loginBtn.innerText = "Login";
+    _loginBtn.style.opacity = "1";
+  }
+}
+
+// ── checkLogin — restore persisted session on page load ──────
+function checkLogin() {
+  try {
+    var saved = localStorage.getItem("loggedUser");
+    if (!saved) return false;
+    var user = JSON.parse(saved);
+    if (user && user.mail && user.role) {
+      _showMainApp(user.mail, user.role);
+      return true;
+    }
+  } catch (_) {}
+  try { localStorage.removeItem("loggedUser"); } catch (_) {}
+  return false;
+}
+
+// ── logout ────────────────────────────────────────────────────
+function logout() {
+  try { localStorage.removeItem("loggedUser"); } catch (_) {}
+  location.reload();
+}
+
+/* ============================================================
+   BOOT — wire up all events, then start loading
+   ============================================================ */
+window.onload = function () {
+  // Cache DOM refs
+  _loginBtn    = document.getElementById("loginBtn");
+  _loginMail   = document.getElementById("loginMail");
+  _loginPass   = document.getElementById("loginPassword");
+  _loginError  = document.getElementById("loginError");
+  _loginStatus = document.getElementById("loginStatus");
+
+  // ── Set initial loading state on button ─────────────────────
+  if (_loginBtn) {
+    _loginBtn.disabled      = true;
+    _loginBtn.innerText     = "Loading…";
+    _loginBtn.style.opacity = "0.6";
+    _loginBtn.style.cursor  = "not-allowed";
+  }
+  if (_loginStatus) {
+    _loginStatus.textContent = "Loading user accounts…";
+  }
+
+  // ── Attach login button events ───────────────────────────────
+  // We use BOTH click and touchstart to cover:
+  // - Desktop: click fires normally
+  // - Mobile: touchstart bypasses the 300ms tap delay on Android
+  if (_loginBtn) {
+    _loginBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      doLogin();
+    });
+    _loginBtn.addEventListener("touchend", function (e) {
+      e.preventDefault(); // prevents ghost click 300ms later
+      doLogin();
+    }, { passive: false });
+  }
+
+  // ── Enter key on both inputs ─────────────────────────────────
+  if (_loginMail) {
+    _loginMail.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (_loginPass) _loginPass.focus(); // move to password field
+      }
+    });
+  }
+  if (_loginPass) {
+    _loginPass.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        doLogin();
+      }
+    });
+  }
+
+  // ── Restore saved session (if any) ──────────────────────────
+  checkLogin();
+
+  // ── Start fetching data (users[] loads inside here) ──────────
+  loadAll(false);
+  startPolling();
+};
+
+</script>
+</body>
+</html>
